@@ -3,7 +3,7 @@ import json
 import uuid
 
 INPUT_FILE = "./data/cleaned_data/rdb_data.json"
-OUTPUT_FILE = "./data/vector_ready/vector_index.json"
+OUTPUT_FILE = "./data/cleaned_data/vector_data.json"
 
 
 def clean(val):
