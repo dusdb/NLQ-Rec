@@ -136,7 +136,7 @@ def load_response_meta(uuid_map):
 
         for row in data:
             pid = clean_value(row.get("고유번호") or row.get("mb_sn"))
-            panel_uuid = uuid_map.get(pid, generate_uuid())
+            panel_uuid = uuid_map.get(pid)
             response_meta.append({
                 "response_uuid": generate_uuid(),
                 "survey_id": survey_id,
