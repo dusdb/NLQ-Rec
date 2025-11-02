@@ -41,7 +41,7 @@ def make_prompt(panel, responses):
     alcohol_exp_other = clean(panel.get("alcohol_exp_other"))
 
     # --- 기본 문장 ---
-    base_sentence = f"{birth}년생 {gender or ''}으로, {region_main or ''} {region_sub or ''}에 거주합니다.".strip()
+    base_sentence = f"{birth}년생 성별은 {gender or ''}(으)로, {region_main or ''} {region_sub or ''}에 거주합니다.".strip()
 
     if marital:
         base_sentence += f" 결혼 상태는 {marital}입니다."
