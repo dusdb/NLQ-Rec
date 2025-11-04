@@ -18,3 +18,8 @@ data/*
 *.jsonl
 *.xlsx
 *.zip
+
+# 5️⃣ API 키 및 환경 변수 보호
+.env
+.env.local
+.env.*.local
