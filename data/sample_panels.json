@@ -1,0 +1,85 @@
+{
+  "table_name": "panels",
+  "description": "패널(응답자) 정보를 저장하는 테이블",
+  "columns": {
+    "id": {
+      "type": "INTEGER",
+      "description": "패널 고유 ID (Primary Key)",
+      "example": 10001
+    },
+    "age": {
+      "type": "INTEGER",
+      "description": "나이",
+      "example": 25,
+      "range": [18, 65]
+    },
+    "gender": {
+      "type": "VARCHAR(10)",
+      "description": "성별",
+      "allowed_values": ["남성", "여성"],
+      "example": "남성"
+    },
+    "location": {
+      "type": "VARCHAR(50)",
+      "description": "거주 지역 (시/도 단위)",
+      "allowed_values": [
+        "서울", "부산", "대구", "인천", "광주", 
+        "대전", "울산", "세종", "경기", "강원",
+        "충북", "충남", "전북", "전남", "경북", "경남", "제주"
+      ],
+      "example": "서울"
+    },
+    "district": {
+      "type": "VARCHAR(50)",
+      "description": "거주 지역 (구/군 단위)",
+      "example": "강남구",
+      "nullable": true
+    },
+    "education": {
+      "type": "VARCHAR(20)",
+      "description": "최종 학력",
+      "allowed_values": ["고졸 이하", "대학 재학", "대졸", "대학원 이상"],
+      "example": "대졸"
+    },
+    "job": {
+      "type": "VARCHAR(50)",
+      "description": "직업",
+      "allowed_values": [
+        "IT/기술", "금융/보험", "제조/생산", "유통/판매",
+        "교육", "의료/보건", "공무원", "자영업",
+        "학생", "주부", "무직", "기타"
+      ],
+      "example": "IT/기술"
+    },
+    "income_level": {
+      "type": "VARCHAR(20)",
+      "description": "소득 수준",
+      "allowed_values": ["하", "중하", "중", "중상", "상"],
+      "example": "중"
+    },
+    "marital_status": {
+      "type": "VARCHAR(20)",
+      "description": "결혼 여부",
+      "allowed_values": ["미혼", "기혼", "기타"],
+      "example": "미혼"
+    },
+    "created_at": {
+      "type": "TIMESTAMP",
+      "description": "패널 등록일",
+      "example": "2024-01-15T10:30:00Z"
+    },
+    "profile_text": {
+      "type": "TEXT",
+      "description": "패널의 특성을 설명하는 자유 형식 텍스트 (임베딩 대상)",
+      "example": "서울 거주 20대 남성. IT 업계 개발자로 근무 중. 기술 제품에 관심이 많음.",
+      "embedding": true
+    }
+  },
+  "indexes": [
+    "age",
+    "gender",
+    "location",
+    "job"
+  ],
+  "vector_column": "profile_embedding"
+}

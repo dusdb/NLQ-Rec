@@ -1,25 +1,17 @@
-# === 데이터 파일 업로드 금지 ===
+# 1. 가상환경 
+venv/
 
-# 1️⃣ data 폴더 안의 모든 파일 무시
-data/*
+# 2. 파이썬 캐시 
+__pycache__/
 
-# 2️⃣ 단, 폴더 구조는 유지 (폴더 자체는 무시하지 않음)
-!data/
-!data/raw_data/
-!data/cleaned_data/
+# 3. IDE 설정 
+.vscode/
 
-# 3️⃣ 각 폴더 안의 placeholder 파일은 허용 (빈 폴더 유지를 위해)
-!data/raw_data/.keep
-!data/cleaned_data/.keep
-
-# 4️⃣ 혹시 있을 수 있는 대형 파일 형식도 추가
-*.csv
-*.json
-*.jsonl
-*.xlsx
-*.zip
-
-# 5️⃣ API 키 및 환경 변수 보호
+# 4. 민감 정보 (API 키)
 .env
-.env.local
-.env.*.local
+
+# 5. data 파일
+data/raw_data/
+data/cleaned_data/
+NLQ-Rec/data/raw_data/
+NLQ-Rec/data/cleaned_data/
