@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import './App.css';
 
-// 1. docx 및 file-saver 라이브러리 (그대로 유지)
+// 1. docx 및 file-saver 라이브러리
 import { Document, Packer, Paragraph, TextRun, HeadingLevel } from 'docx';
 import { saveAs } from 'file-saver';
 
-// --- Mock Data 생성 함수 (원본과 동일) ---
+// --- Mock Data 생성 함수 ---
 function generateFullMockPanelList(count, queryType = 'base') {
     const fullList = [];
     const jobs = ['IT 기획자', '마케터', '디자이너', '개발자', '금융업', '데이터 분석가', '프리랜서', '학생'];
@@ -48,13 +48,10 @@ function generateMockResponse(query) {
     else if (countMatch && countMatch[1]) { totalCount = parseInt(countMatch[1], 10); queryType = 'base'; }
     else { totalCount = 100; queryType = 'base'; }
 
-    // --- [여기가 수정되었습니다] ---
-    // if/else 로직을 삭제하고, 항상 두 개의 추천을 모두 생성합니다.
     let recommendations = [
         { id: 'rec-001', text: "이 그룹은 평균보다 '포인트/캐시백 혜택' 선호도가 3.2배 높습니다.", action: { buttonText: "+ '포인트/캐시백 선호' 조건 추가하기", data: { type: 'interest', value: '포인트/캐시백', queryPart: '포인트/캐시백' }}},
         { id: 'rec-002', text: "이 그룹의 78%가 'AI 챗봇'을 주 3회 이상 사용합니다.", action: { buttonText: "+ 'AI 챗봇 사용자' 조건 추가하기", data: { type: 'lifestyle', value: 'ai_chatbot_user', queryPart: 'AI 챗봇' }}}
     ];
-    // --- [수정 끝] ---
     
     const strategyCards = generateMockStrategyReport(query);
     const currentFullPanelList = generateFullMockPanelList(totalCount, queryType);
@@ -88,9 +85,7 @@ function generateMockStrategyReport(query) {
 }
 
 
-/**
- * 4. Word(.docx) 다운로드 생성 함수
- */
+// 4. Word(.docx) 다운로드 생성 함수
 async function handleDownloadDocx(reportData) {
     if (!reportData) { alert("보고서 데이터가 없습니다."); return; }
     console.log("DOCX 생성 시작:", reportData);
@@ -162,7 +157,7 @@ async function handleDownloadDocx(reportData) {
             sections: [{
                 properties: {},
                 children: [
-                    // --- 문서 제목 ---
+                    // 문서 제목
                     new Paragraph({
                         children: [
                             new TextRun({
@@ -179,8 +174,8 @@ async function handleDownloadDocx(reportData) {
                     }),
 
                     new Paragraph({ children: [new TextRun({ text: "", font: "맑은 고딕" })]}),
-                    // --- 각 섹션 ---
-                    ...sections.flat(), // (중첩 배열을 1차원으로 풂)
+                    // 각 섹션
+                    ...sections.flat(), // 중첩 배열을 1차원으로 풂
                 ],
             }],
         });
@@ -196,13 +191,10 @@ async function handleDownloadDocx(reportData) {
 }
 
 
-// --- React 컴포넌트 정의 ---
-
-/**
- * 1. 메인 App 컴포넌트
- */
+// React 컴포넌트 정의
+// 1. 메인 App 컴포넌트
 function App() {
-    // --- 상태 정의 (useState) ---
+    // 상태 정의 (useState)
     const [query, setQuery] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [isSearched, setIsSearched] = useState(false);
@@ -228,7 +220,7 @@ function App() {
     // '전체 패널 보기' 화면이 닫히는 애니메이션 중인지 추적
     const [isAllPanelsExiting, setIsAllPanelsExiting] = useState(false);
 
-    // --- 핵심 로직 (이벤트 핸들러) ---
+    // 핵심 로직 (이벤트 핸들러)
     const handleSearch = (queryToSearch) => {
         if (!queryToSearch && filterTags.length === 0) {
              if (queryToSearch === "") clearResults();
@@ -280,13 +272,13 @@ function App() {
         handleSearch(newQueryTrimmed); // 새 쿼리로 즉시 재검색
     };
 
-    // --- 모달 핸들러 (2종류) ---
+    // 모달 핸들러 (2종류)
     // 1. 패널 모달 열기 / 닫기
     const openPanelModal = (panel) => {
         setSelectedPanel(panel); // 1. 데이터 먼저 삽입 (아직 안 보임)
         setTimeout(() => {
             setIsPanelModalOpen(true); // 2. (20ms 뒤) '열어라' 명령
-        }, 20); // 0초보다 20ms가 브라우저 렌더링에 안전함
+        }, 20);
     };
     const closePanelModal = () => {
         setIsPanelModalOpen(false); // 1. '닫아라' 명령 (애니메이션 시작)
@@ -295,7 +287,7 @@ function App() {
         }, 300); 
     };
 
-    // 2. 전략 모댤 열기 / 닫기
+    // 2. 전략 모댤 열기/닫기
     const openStrategyModal = (strategy) => {
         setSelectedStrategy(strategy); // 1. 데이터 먼저 삽입
         setTimeout(() => {
@@ -309,7 +301,7 @@ function App() {
         }, 300);
     };
 
-    // --- [새 '전체 패널' 닫기 핸들러 추가] ---
+    // 새 '전체 패널' 닫기 핸들러
     const handleCloseAllPanels = () => {
         setIsAllPanelsExiting(true); // 1. '사라지는 중' 상태로 변경 (CSS 애니메이션 시작)
         setTimeout(() => {
@@ -319,8 +311,7 @@ function App() {
         }, 300); // CSS 애니메이션 시간과 동일하게 설정
     };
 
-    // --- 뷰 렌더링 로직 ---
-
+    // 뷰 렌더링 로직
     // '전체 패널 보기'가 활성화되면, 그것만 렌더링
     if (isAllPanelsViewVisible || isAllPanelsExiting) {
         return (
@@ -338,10 +329,8 @@ function App() {
         <>
             {/* .search-active 클래스로 검색 전/후 상태 제어 */}
             <div className={`container ${isSearched ? 'search-active' : ''}`}>
-                
-                {/* --- [수정된 헤더] --- */}
+                  
                 <header className="hero-header">
-                    {/* 로고. /public/logo.png에 파일이 있어야 합니다. */}
                     <img src="/logo.png" className="logo" alt="App Logo" />
                     
                     {/* "검색 전"에만 보이는 큰 제목/설명 */}
@@ -351,8 +340,6 @@ function App() {
                     {/* "검색 후"에만 보이는 새 제목 */}
                     <h2 className="app-title-active">AI Panel Insight</h2>
                 </header>
-                {/* --- [헤더 수정 끝] --- */}
-
 
                 <section id="control-tower" className="workspace-section">
                     <h2>검색하기 : 원하는 조건을 입력해주세요</h2>
@@ -473,11 +460,8 @@ function App() {
     );
 }
 
-// --- 하위 컴포넌트들 ---
-
-/**
- * 2. '전체 패널 보기' 뷰
- */
+// 하위 컴포넌트들
+// 2. '전체 패널 보기' 뷰
 function AllPanelsView({ fullPanelList, totalCount, onBack, isExiting }) {
     const [selectedPanel, setSelectedPanel] = useState(null);
 
@@ -506,9 +490,7 @@ function AllPanelsView({ fullPanelList, totalCount, onBack, isExiting }) {
     );
 }
 
-/**
- * 3. 패널 상세 모달
- */
+// 3. 패널 상세 모달
 function PanelDetailModal({ isOpen, onClose, panel }) {
     const overlayClasses = `modal-overlay ${isOpen ? 'visible' : ''}`;
     const modalClasses = `panel-detail-modal ${isOpen ? 'open' : ''}`;
@@ -528,9 +510,7 @@ function PanelDetailModal({ isOpen, onClose, panel }) {
     );
 }
 
-/**
- * 7. (복원) '단순 인사이트' 카드 컴포넌트
- */
+// 4. '단순 인사이트' 카드 컴포넌트
 function RecommendationCard({ rec, onClick }) {
     return (
         <div className="recommendation-card">
@@ -543,9 +523,7 @@ function RecommendationCard({ rec, onClick }) {
 }
 
 
-/**
- * 8. 'AI 전략' 카드 컴포넌트
- */
+// 5. 'AI 전략' 카드 컴포넌트
 function StrategyCard({ strategy, onClick }) {
     return (
         <div className="strategy-card">
@@ -567,9 +545,7 @@ function StrategyCard({ strategy, onClick }) {
 }
 
 
-/**
- * 9. 'AI 전략 상세' 모달 컴포넌트
- */
+// 6. 'AI 전략 상세' 모달 컴포넌트
 function StrategyDetailModal({ isOpen, onClose, strategy }) {
     const reportData = strategy.report;
     
@@ -579,10 +555,7 @@ function StrategyDetailModal({ isOpen, onClose, strategy }) {
 
     return (
         <>
-            {/* --- [여기가 수정되었습니다!] --- */}
-            {/* (id="modal-overlay" 추가) */}
             <div id="modal-overlay" className={`modal-overlay ${isOpen ? 'visible' : ''}`} onClick={onClose}></div>
-            {/* --- [수정 끝] --- */}
             
             <div className={`strategy-detail-modal ${isOpen ? 'open' : ''}`}>
                 <button id="strategy-modal-close-btn" title="닫기" onClick={onClose}>&times;</button>
@@ -604,9 +577,7 @@ function StrategyDetailModal({ isOpen, onClose, strategy }) {
     );
 }
 
-/**
- * 10. 전략 보고서 내용 컴포넌트 (모달 내부)
- */
+// 7. 전략 보고서 내용 컴포넌트 (모달 내부)
 function StrategyReportContent({ report }) {
     return (
         <div className="report-layout">
@@ -617,7 +588,6 @@ function StrategyReportContent({ report }) {
             </div>
             <div className="report-column">
                 <div className="report-item"><h4>🤔 문제 정의</h4>
-                    {/* (수정) \n을 <br/> 태그로 변환하여 렌더링 */}
                     <p>
                         {report.problemDefinition.split('\n').map((line, i) => (
                             <React.Fragment key={i}>
@@ -636,7 +606,7 @@ function StrategyReportContent({ report }) {
 }
 
 
-// --- 11. 재사용 컴포넌트들 (기존) ---
+// 8. 재사용 컴포넌트들
 function FilterTag({ tag, onRemove }) {
     return (
         <div className="filter-tag" data-query-part={tag.queryPart}>
