@@ -2,7 +2,7 @@ import os
 import psycopg2
 from dotenv import load_dotenv
 
-load_dotenv(dotenv_path="data/.env")
+load_dotenv(dotenv_path="../data/.env")
 
 print("DB_HOST =", repr(os.getenv("DB_HOST")))
 print("DB_USER =", repr(os.getenv("DB_USER")))
