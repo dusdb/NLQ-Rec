@@ -1,11 +1,11 @@
-"""
+﻿"""
 FastAPI 서버 기본 환경 설정 코드
 """
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.core.config import get_settings
-from app.routers import search
+from app.config.settings import get_settings
+from app.api.v1 import search
 
 settings = get_settings()
 
