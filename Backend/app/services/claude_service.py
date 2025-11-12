@@ -1,12 +1,12 @@
-"""
-Claude API 서비스 - 모델을 설정 파일에서 동적으로 가져오도록 디커플링
-오류 수정: system_message 변수가 try 블록 내에서 명확하게 정의되도록 수정
+﻿"""
+Claude API ?쒕퉬??- 紐⑤뜽???ㅼ젙 ?뚯씪?먯꽌 ?숈쟻?쇰줈 媛?몄삤?꾨줉 ?붿빱?뚮쭅
+?ㅻ쪟 ?섏젙: system_message 蹂?섍? try 釉붾줉 ?댁뿉??紐낇솗?섍쾶 ?뺤쓽?섎룄濡??섏젙
 """
 from anthropic import Anthropic
 from typing import Dict, Any, List
 import json
 
-from app.core.config import get_settings
+from app.config.settings import get_settings
 from app.services.prompt_templates import PromptTemplates
 from app.services.query_parser import QueryParser
 
@@ -14,26 +14,26 @@ settings = get_settings()
 
 
 class ClaudeService:
-    """Claude API를 사용한 자연어 처리 서비스"""
+    """Claude API瑜??ъ슜???먯뿰??泥섎━ ?쒕퉬??""
     
     def __init__(self):
         self.client = Anthropic(api_key=settings.anthropic_api_key)
         self.prompt_templates = PromptTemplates()
         self.query_parser = QueryParser()
     
-    # [1차 호출] 쿼리 분석
+    # [1李??몄텧] 荑쇰━ 遺꾩꽍
     def analyze_query(
         self, 
         user_query: str,
         use_parser: bool = True
     ) -> Dict[str, Any]:
         """
-        사용자 자연어 질의를 분석하며 설정된 모델을 사용합니다.
+        ?ъ슜???먯뿰??吏덉쓽瑜?遺꾩꽍?섎ŉ ?ㅼ젙??紐⑤뜽???ъ슜?⑸땲??
         """
         
-        # ⚠️ 오류 방지: try 블록 내에서 모든 필수 변수 정의
+        # ?좑툘 ?ㅻ쪟 諛⑹?: try 釉붾줉 ?댁뿉??紐⑤뱺 ?꾩닔 蹂???뺤쓽
         try:
-            # 1단계: Query Parser로 사전 처리
+            # 1?④퀎: Query Parser濡??ъ쟾 泥섎━
             if use_parser:
                 parsed_data = self.query_parser.full_parse_and_augment(user_query)
                 pre_analysis = {
@@ -45,14 +45,14 @@ class ClaudeService:
             else:
                 pre_analysis = None
             
-            # 2단계: LLM 호출을 위한 프롬프트와 시스템 메시지 정의
+            # 2?④퀎: LLM ?몄텧???꾪븳 ?꾨＼?꾪듃? ?쒖뒪??硫붿떆吏 ?뺤쓽
             schema = self.prompt_templates.load_schema()
             prompt = self.prompt_templates.query_analysis_prompt(user_query, schema)
-            system_message = self.prompt_templates.get_system_message('analyzer') # <-- 여기서 정의!
+            system_message = self.prompt_templates.get_system_message('analyzer') # <-- ?ш린???뺤쓽!
 
             
             message = self.client.messages.create(
-                model=settings.CLAUDE_QUERY_ANALYSIS_MODEL,  # <-- 설정 파일에서 모델 가져옴
+                model=settings.CLAUDE_QUERY_ANALYSIS_MODEL,  # <-- ?ㅼ젙 ?뚯씪?먯꽌 紐⑤뜽 媛?몄샂
                 max_tokens=settings.max_tokens,
                 system=system_message,
                 messages=[
@@ -63,7 +63,7 @@ class ClaudeService:
                 ]
             )
             
-            # 응답 처리 로직
+            # ?묐떟 泥섎━ 濡쒖쭅
             response_text = message.content[0].text.strip()
             response_text = self._clean_json_response(response_text)
             
@@ -82,25 +82,25 @@ class ClaudeService:
                     "data": None,
                     "pre_analysis": pre_analysis,
                     "raw_response": response_text,
-                    "error": f"JSON 파싱 실패: {str(e)}"
+                    "error": f"JSON ?뚯떛 ?ㅽ뙣: {str(e)}"
                 }
                 
         except Exception as e:
-            # 오류 발생 시 pre_analysis가 정의되지 않았을 수 있으므로 기본값 사용
+            # ?ㅻ쪟 諛쒖깮 ??pre_analysis媛 ?뺤쓽?섏? ?딆븯?????덉쑝誘濡?湲곕낯媛??ъ슜
             return {
                 "success": False,
                 "data": None,
                 "error": str(e)
             }
     
-    # [2차 호출] SQL 생성
+    # [2李??몄텧] SQL ?앹꽦
     def generate_sql(
         self, 
         analyzed_query: Dict[str, Any],
         target_count: int = 100
     ) -> Dict[str, Any]:
         """
-        JSON 분석 결과를 SQL로 변환하며 설정된 모델을 사용합니다.
+        JSON 遺꾩꽍 寃곌낵瑜?SQL濡?蹂?섑븯硫??ㅼ젙??紐⑤뜽???ъ슜?⑸땲??
         """
         
         try:
@@ -110,7 +110,7 @@ class ClaudeService:
                 schema,
                 target_count
             )
-            system_message = self.prompt_templates.get_system_message('sql_generator') # <-- 여기서 정의!
+            system_message = self.prompt_templates.get_system_message('sql_generator') # <-- ?ш린???뺤쓽!
             
             message = self.client.messages.create(
                 model=settings.CLAUDE_SQL_GENERATION_MODEL, 
@@ -157,14 +157,14 @@ class ClaudeService:
                 "error": str(e)
             }
     
-    # [3차 호출] 인사이트 추출
+    # [3李??몄텧] ?몄궗?댄듃 異붿텧
     def extract_insights(
         self, 
         panel_data: List[Dict[str, Any]],
         original_query: str = None
     ) -> Dict[str, Any]:
         """
-        패널 그룹의 숨겨진 공통 특성을 추출하며 설정된 모델을 사용합니다.
+        ?⑤꼸 洹몃９???④꺼吏?怨듯넻 ?뱀꽦??異붿텧?섎ŉ ?ㅼ젙??紐⑤뜽???ъ슜?⑸땲??
         """
         
         try:
@@ -173,9 +173,9 @@ class ClaudeService:
             
             prompt = self.prompt_templates.insight_extraction_prompt(
                 sampled_data,
-                original_query or "사용자 질의 없음"
+                original_query or "?ъ슜??吏덉쓽 ?놁쓬"
             )
-            system_message = self.prompt_templates.get_system_message('insight_extractor') # <-- 여기서 정의!
+            system_message = self.prompt_templates.get_system_message('insight_extractor') # <-- ?ш린???뺤쓽!
             
             message = self.client.messages.create(
                 model=settings.CLAUDE_INSIGHT_EXTRACTION_MODEL, 
@@ -204,7 +204,7 @@ class ClaudeService:
                     "success": False,
                     "data": None,
                     "raw_response": response_text,
-                    "error": "JSON 파싱 실패"
+                    "error": "JSON ?뚯떛 ?ㅽ뙣"
                 }
                 
         except Exception as e:
@@ -215,12 +215,12 @@ class ClaudeService:
             }
     
     # =====================================================
-    # 유틸리티 메서드
+    # ?좏떥由ы떚 硫붿꽌??
     # =====================================================
     
     @staticmethod
     def _clean_json_response(text: str) -> str:
-        """JSON 응답에서 마크다운 코드 블록 제거"""
+        """JSON ?묐떟?먯꽌 留덊겕?ㅼ슫 肄붾뱶 釉붾줉 ?쒓굅"""
         if text.startswith("```json"):
             text = text.replace("```json", "").replace("```", "").strip()
         elif text.startswith("```"):
@@ -229,7 +229,7 @@ class ClaudeService:
     
     @staticmethod
     def _clean_sql_response(text: str) -> str:
-        """SQL 응답에서 마크다운 코드 블록 제거"""
+        """SQL ?묐떟?먯꽌 留덊겕?ㅼ슫 肄붾뱶 釉붾줉 ?쒓굅"""
         if text.startswith("```sql"):
             text = text.replace("```sql", "").replace("```", "").strip()
         elif text.startswith("```"):
@@ -237,5 +237,5 @@ class ClaudeService:
         return text
 
 
-# 싱글톤 인스턴스
+# ?깃????몄뒪?댁뒪
 claude_service = ClaudeService()
