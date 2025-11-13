@@ -35,7 +35,7 @@ body {
     gap: 1.0rem;
     transition: max-width 0.4s ease-in-out, min-height 0.4s ease; 
 
-    min-height: calc(100vh - 20rem);
+    min-height: calc(100vh - 15rem);
     justify-content: center;
 }
 
@@ -74,7 +74,7 @@ body {
 /* "검색 후" 보일 새 제목 (평소엔 숨김) */
 .app-title-active {
     display: none;
-    font-size: 1.7rem;
+    font-size: 2rem;
     font-weight: 700;
     color: var(--logo-color);
     margin: 0 0 0 1rem;
@@ -205,6 +205,7 @@ body {
     }
 }
 
+/* 패널 상세 정보 */
 .all-panels-header {
     display: flex;
     align-items: center;
@@ -213,6 +214,7 @@ body {
     flex-shrink: 0;
 }
 
+/* 전체 패널 목록에서 뒤로 가기 버튼 */
 .back-btn {
     background: none;
     border: 1px solid var(--border-color);
@@ -228,10 +230,12 @@ body {
     margin-right: 1.5rem;
     transition: background-color 0.2s;
 }
+
 .back-btn:hover {
     background-color: var(--highlight-color);
 }
 
+/* 전체 패널 목록 */
 #all-panels-title {
     margin: 0;
     font-size: 1.5rem;
@@ -251,27 +255,30 @@ body {
     background-color: var(--background-color);
 }
 
-/* 왼쪽 리스트 내부의 패널 카드 스타일 */
+/* 전체 패널 목록에서 왼쪽 리스트 내부의 패널 카드 스타일 */
 .panel-list-column .panel-card {
     width: 100%;
     box-sizing: border-box; /* padding 포함 100% */
     margin-bottom: 1rem;
 }
 
-/* 오른쪽 패널 상세 컬럼 */
+/* 전체 패널 목록에서 오른쪽 패널 상세 컬럼 */
 .panel-detail-column {
     flex: 1 1 auto;
     overflow-y: auto;
     padding: 2rem;
 }
 
-/* 오른쪽 상세 뷰 (프로필 섹션 재사용) */
+/* 전체 패널 목록에서 오른쪽 상세 뷰 (프로필 섹션 재사용) */
+/* 자기소개 전까지 */
 .panel-detail-column .profile-section {
     display: flex;
     align-items: center;
     gap: 1.5rem;
     margin-bottom: 2rem;
 }
+
+/* 전체 패널 목록에서 오른쪽 상세 뷰의 P */
 .panel-detail-column .profile-avatar {
     width: 80px;
     height: 80px;
@@ -284,18 +291,26 @@ body {
     font-weight: bold;
     color: var(--primary-color);
 }
+
+/* 전체 패널 목록에서 오른쪽 상세 뷰의 <p> */
 .panel-detail-column .profile-summary p {
     margin: 0.25rem 0;
 }
+
+/* 전체 패널 목록에서 오른쪽 상세 뷰의 이름 */
 .panel-detail-column .profile-summary .name {
     font-size: 1.2rem;
     font-weight: bold;
 }
+
+/* 전체 패널 목록에서 오른쪽 상세 뷰의 자기소개, 상세 정보 */
 .panel-detail-column .profile-details h4 {
     font-size: 1.1rem;
     color: var(--primary-color);
     margin-bottom: 1rem;
 }
+
+/* 전체 패널 목록에서 오른쪽 상세 뷰의 ul */
 .panel-detail-column .profile-details ul {
     list-style: none;
     padding: 0;
@@ -759,11 +774,18 @@ body {
 }
 
 .strategy-detail-modal .modal-header {
-    font-size: 1.3rem;
-    padding-top: 1.5rem;
+    font-size: 1.5rem;
+    padding-top: 0.7rem;
     padding-left: 2.5rem;
-    padding-right: 3.5rem; 
-    padding-bottom: 3rem;
+    padding-right: 3.5rem;
+    border-bottom: 1px solid var(--border-color); /* 헤더와 콘텐츠 구분선 */
+    background-color: var(--highlight-color);
+
+}
+
+/* 헤더 안의 h3 제목 태그의 기본 하단 여백 제거 */
+.strategy-detail-modal .modal-header h3 {
+    margin-bottom: 0;
 }
 
 /* 전략 모달 내부 레이아웃 */
@@ -803,35 +825,112 @@ body {
 
 /* 보고서 내용 레이아웃 */
 .report-layout {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 2rem;
+    display: block;
 }
-@media (max-width: 768px) {
-    .report-layout {
-        grid-template-columns: 1fr;
-    }
-}
-.report-column .report-item {
-    margin-bottom: 1.5rem;
-}
-.report-item h4 {
+
+/* 모달 제목 아래 부제목 */
+.report-subtitle {
     font-size: 1rem;
+    color: var(--subtle-text-color);
+    margin-top: 0.25rem; /* 헤더와의 간격 조정 */
+    margin-bottom: 1.5rem;
+    padding-bottom: 0rem;
+}
+
+/* 1, 2, 3... 각 섹션 스타일 */
+.report-section {
+    background-color: var(--card-background);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 1.5rem 2rem;
+    margin-top: 2.5rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+}
+
+/* 기존 .report-item h4 스타일 덮어쓰기 */
+.report-item h4 {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+/* 섹션 제목 (예: 1 프로젝트 요약) */
+.report-section h3 {
+    font-size: 1.3rem;
     color: var(--primary-color);
-    border-bottom: 2px solid var(--highlight-color);
-    padding-bottom: 0.5rem;
     margin-top: 0;
-    margin-bottom: 0.75rem;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    /* .report-item h4 로부터 상속받은 스타일 초기화 */
+    border-bottom: none;
+    padding-bottom: 0; 
 }
-.report-item p {
-    font-size: 0.95rem;
-    line-height: 1.6;
-    color: var(--text-color);
-    margin: 0;
+
+/* 섹션 제목 앞 수직 바 */
+.report-section h3::before {
+    content: '';
+    display: inline-block;
+    width: 6px;
+    height: 28px;
+    background-color: var(--primary-color);
+    margin-right: 0.75rem;
+    border-radius: 2px;
 }
-.report-item ul {
+
+/* 섹션 제목 숫자 (예: '1') */
+.report-section h3 span {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--primary-color);
+    margin-right: 0.5rem;
+}
+
+/* 섹션 내부 테이블 스타일 */
+.report-table {
+    width: 100%;
+    border-collapse: collapse;
     font-size: 0.95rem;
+}
+
+.report-table th,
+.report-table td {
+    border: 1px solid var(--border-color);
+    padding: 0.75rem 1rem;
+    text-align: left;
     line-height: 1.6;
-    padding-left: 20px;
-    margin: 0;
+}
+
+/* 테이블 항목명 (왼쪽 열) */
+.report-table th {
+    background-color: #F9FAFB;
+    font-weight: 700;
+    width: 25%;
+}
+
+/* 테이블 헤더 (thead) */
+.report-table thead th {
+    background-color: #F4F7F9;
+    color: var(--primary-color);
+    text-align: left;
+    width: auto; /* 헤더는 자동 너비 */
+}
+
+/* "꾸준함을 디자인한다" 하이라이트 텍스트 */
+.highlight-text {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--primary-color);
+    margin-bottom: 0.5rem !important;
+}
+
+/* 6. 전략 제안 (ol) 리스트 */
+.report-list {
+    font-size: 0.95rem;
+    line-height: 1.8;
+    padding-left: 25px;
+}
+
+.report-list li {
+    margin-bottom: 0.5rem;
 }

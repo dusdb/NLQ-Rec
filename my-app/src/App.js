@@ -2,7 +2,10 @@ import React, { useState } from 'react';
 import './App.css';
 
 // 1. docx 및 file-saver 라이브러리
-import { Document, Packer, Paragraph, TextRun, HeadingLevel } from 'docx';
+import { 
+    Document, Packer, Paragraph, TextRun, HeadingLevel, 
+    Table, TableRow, TableCell, WidthType, BorderStyle, AlignmentType 
+} from 'docx';
 import { saveAs } from 'file-saver';
 
 // --- Mock Data 생성 함수 ---
@@ -62,6 +65,7 @@ function generateMockResponse(query) {
 // 3. AI 전략 보고서 Mock 데이터 생성 함수
 function generateMockStrategyReport(query) {
     if (query.length < 3) return []; 
+
     const report1 = {
         id: 'strategy-001',
         strategyName: "건강 구독 기반 AI 헬스 코치",
@@ -70,14 +74,64 @@ function generateMockStrategyReport(query) {
         keywords: "건강관리 / 구독 / 개인화",
         effect: "지속적 고객 접점(ARR) 확보",
         report: {
+            
+            // 공통 정보
             projectName: "건강 구독 기반 AI 헬스 코치 서비스",
-            problemDefinition: "바쁜 직장인은 건강관리의 필요성을 인식하지만, 지속적 실천과 맞춤형 루틴 제공의 부재로 건강관리 실행률이 낮음.",
-            coreValue: "'꾸준함을 디자인한다' — 데이터 기반 개인화된 건강 루틴 제공",
-            serviceConcept: "AI가 개인의 활동/소비 데이터를 기반으로 영양/운동/휴식 루틴을 자동 큐레이션하는 맞춤형 구독 서비스.",
-            targetPanel: "수도권 30대 여성 직장인 / 스마트워치 사용자 / 헬스/건강 관심군",
-            insightReason: "이 그룹은 스마트워치 보유율 64%, 헬스 관련 소비 비율 1.8배, '꾸준함' 관련 키워드 사용 빈도 2.3배 높음.",
-            timeChange: "2023→2025년 '건강관리' 키워드 언급률 +26% 상승, '홈트레이닝' 관련 응답 1.6배 증가.",
-            strategyProposal: ["1. 스마트워치 연동 헬스 앱 구독 출시 (MVP)", "2. 직장인 대상 웰니스 캠페인 (B2B)", "3. AI 기반 일일 루틴 피드백 기능 추가"]
+            projectSubtitle: "AI를 활용한 개인 맞춤형 루틴형 건강관리 제안서",
+
+            // 섹션 1: 프로젝트 요약
+            summaryTable: [
+                { th: "프로젝트명",   td: "AI 헬스 코치 (가칭)" },
+                { th: "타겟 고객",     td: "수도권 30대 여성 직장인, 스마트워치 사용자, 건강 관심층" },
+                { th: "핵심 인사이트", td: "'꾸준함' 관련 키워드 사용률 2.3배 증가, 웰니스 소비 1.8배 상승" },
+                { th: "핵심 제안",     td: "AI가 개인의 루틴 데이터를 분석해 지속 가능한 건강 습관을 디자인" }
+            ],
+
+            // 섹션 2: 문제 정의
+            problemDefinition: "바쁜 직장인들은 건강관리의 필요성을 인식하고 있으나, 지속적 실천과 맞춤형 루틴 관리의 부재로 실행률이 낮습니다. 기존 헬스케어 앱은 일시적 사용에 머무르고 있으며, 구독형 루틴 제공 서비스의 시장 공백이 존재합니다.",
+
+            // 섹션 3: 핵심 가치
+            coreValueHighlight: `"꾸준함을 디자인한다"`,
+            coreValueText: "데이터 기반 AI 분석으로 개인의 패턴에 최적화된 운동/영양/휴식 루틴을 자동 추천하여 건강한 습관을 형성하게 합니다.",
+
+            // 섹션 4: 인사이트 근거
+            insightTable: {
+                headers: ["지표", "수치", "의미"],
+                rows: [
+                    ["스마트워치 보유율", "64%", "건강 관련 데이터 수집 기반 확대"],
+                    ["헬스 관련 소비 증가율", "+1.8배", "웰니스 산업 성장세 강화"],
+                    ["'꾸준함' 키워드 검색량", "+2.3배", "지속 가능한 루틴화 욕구 증가"],
+                    ["'홈트레이닝' 언급량", "+1.6배", "집중적 자기관리 트렌드 강화"]
+                ]
+            },
+
+            // 섹션 5: 서비스 개요
+            serviceTable: {
+                headers: ["항목", "내용"],
+                rows: [
+                    ["서비스 형태", "AI 기반 건강 루틴 구독형 코칭 서비스"],
+                    ["핵심 기능", "데이터 분석 / 루틴 자동 추천 / AI 피드백"],
+                    ["차별점", "지속성 중심의 구독 + 개인화 루틴 추천 결합"],
+                    ["구독 모델", "무료 베이직 / 유료 프리미엄 / 전문가 매칭"]
+                ]
+            },
+
+            // 섹션 6: 전략 제안
+            strategyProposal: [
+                "스마트워치 연동형 MVP 출시",
+                "B2B 제휴 (직장인 복지 플랫폼 / 보험사 등)",
+                "AI 피드백 기능 및 목표 기반 루틴 강화"
+            ],
+
+            // 섹션 7: 기대 효과
+            effectTable: {
+                headers: ["구분", "정량적 효과", "정성적 효과"],
+                rows: [
+                    ["사용자", "앱 유지율 +30%", "루틴화 및 건강 동기 부여"],
+                    ["기업", "구독 매출 +15%", "브랜드 신뢰도 향상"],
+                    ["사회", "건강 실천율 향상", "헬스케어 데이터 활성화"]
+                ]
+            }
         }
     };
     if (query.includes('운동') || query.includes('직장인')) { return [report1]; }
@@ -86,108 +140,143 @@ function generateMockStrategyReport(query) {
 
 
 // 4. Word(.docx) 다운로드 생성 함수
-async function handleDownloadDocx(reportData) {
-    if (!reportData) { alert("보고서 데이터가 없습니다."); return; }
-    console.log("DOCX 생성 시작:", reportData);
-    
-    // 텍스트를 Paragraph 배열로 쉽게 변환하는 헬퍼 함수
-    const createSection = (title, text) => {
-        const paragraphs = [
-            // 섹션 제목
-            new Paragraph({
-                children: [
-                    new TextRun({
-                        text: title,
-                        bold: true,
-                        size: 32, // 16pt (16 * 2)
-                        color: "000000",
-                        font: "맑은 고딕",
-                    }),
-                ],
-                heading: HeadingLevel.HEADING_1,
-            })
-        ];
-        
-        // 텍스트가 배열(전략 제안)인 경우와 일반 문자열인 경우 분리
-        // 본문
-        if (Array.isArray(text)) {
-            // '추천 전략 제안' 같은 글머리 기호 목록
-            paragraphs.push(
-                ...text.map(item => new Paragraph({
-                    children: [new TextRun({
-                        text: item,
-                        size: 24, // 12pt
-                        font: "맑은 고딕",
-                    })], 
-                    bullet: { level: 0 },
-                }))
-            );
-        } else if (text) {
-            // '문제 정의' 같은 일반 텍스트
-            const lines = text.split("\n");
-            paragraphs.push(
-                ...lines.map(line => new Paragraph({
-                    children: [new TextRun({ 
-                        text: line, 
-                        size: 24, // 12pt
-                        font: "맑은 고딕",
-                    })],
-                }))
-            );
-        }
+async function handleDownloadDocx(report) {
+    if (!report) return;
 
-        paragraphs.push(new Paragraph({children: [new TextRun({ text: "", font: "맑은 고딕" })]}));
-        paragraphs.push(new Paragraph({children: [new TextRun({ text: "", font: "맑은 고딕" })]}));
-        
-        return paragraphs;
+    // 스타일 정의
+    // 제목 스타일
+    const titleStyle = {
+        children: [
+            new TextRun({
+                text: report.projectName || "AI 헬스 코치 (가칭)",
+                bold: true,
+                size: 48
+            })
+        ],
+        heading: HeadingLevel.TITLE,
+        alignment: AlignmentType.CENTER,
+    };
+    
+    // 부제목 스타일
+    const subtitleStyle = {
+        text: report.projectSubtitle || "AI를 활용한 개인 맞춤형 루틴형 건강관리 제안서",
+        heading: HeadingLevel.HEADING_1,
+        style: "Subtitle", 
+        alignment: AlignmentType.CENTER,
+        spacing: { after: 400 },
     };
 
-    try {
-        const sections = [
-            ...createSection("추천 타겟 패널", reportData.targetPanel),
-            ...createSection("제안 이유 (인사이트 근거)", reportData.insightReason),
-            ...createSection("시간 흐름에 따른 변화", reportData.timeChange),
-            ...createSection("문제 정의", reportData.problemDefinition),
-            ...createSection("핵심 가치", reportData.coreValue),
-            ...createSection("서비스 컨셉", reportData.serviceConcept),
-            ...createSection("추천 전략 제안", reportData.strategyProposal),
-        ];
-
-        const doc = new Document({
-            sections: [{
-                properties: {},
-                children: [
-                    // 문서 제목
-                    new Paragraph({
-                        children: [
-                            new TextRun({
-                                text: reportData.projectName,
-                                bold: true,
-                                size: 44, // 24pt
-                                color: "000000",
-                                font: "맑은 고딕",
-                            }),
-                        ],
-                        heading: HeadingLevel.TITLE,
-                        alignment: 'center', // (docx 라이브러리 버전에 따라 AlignmentType.CENTER)
-                        spacing: { after: 480 },
-                    }),
-
-                    new Paragraph({ children: [new TextRun({ text: "", font: "맑은 고딕" })]}),
-                    // 각 섹션
-                    ...sections.flat(), // 중첩 배열을 1차원으로 풂
-                ],
-            }],
+    // 섹션 제목 (예: "1 프로젝트 요약")
+    const createSectionHeading = (number, text) => {
+        return new Paragraph({
+            children: [
+                new TextRun({ text: `${number} `, size: 32, bold: true }),
+                new TextRun({ text: text, size: 32, bold: true }),
+            ],
+            spacing: { before: 400, after: 200 },
         });
+    };
 
-        // Blob 생성 및 파일 다운로드 (file-saver)
-        const blob = await Packer.toBlob(doc);
+    // 기본 본문
+    const createPara = (text) => {
+        return new Paragraph({
+            children: [new TextRun({ text: text, size: 22 })],
+            spacing: { after: 100 },
+        });
+    };
+
+    const BORDER_STYLE = { style: BorderStyle.SINGLE, size: 1, color: "E0E6ED" };
+    const TABLE_BORDERS = { top: BORDER_STYLE, bottom: BORDER_STYLE, left: BORDER_STYLE, right: BORDER_STYLE };
+
+    // 헬퍼: 2열 테이블 생성 (섹션 1, 5)
+    const createTwoColTable = (data) => {
+        const rows = data.map(item => 
+            new TableRow({ 
+                children: [
+                    new TableCell({ borders: TABLE_BORDERS, children: [createPara(item.th || item[0])] }),
+                    new TableCell({ borders: TABLE_BORDERS, children: [createPara(item.td || item[1])] })
+                ]
+            })
+        );
+        return new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: rows });
+    };
+
+    // 헬퍼: 3열 테이블 생성 (섹션 4, 7)
+    const createThreeColTable = (data) => {
+        const headerRow = new TableRow({ 
+            tableHeader: true, 
+            children: data.headers.map(header => new TableCell({ borders: TABLE_BORDERS, children: [createPara(header)] })) 
+        });
+        const dataRows = data.rows.map(row => 
+            new TableRow({ 
+                children: [
+                    new TableCell({ borders: TABLE_BORDERS, children: [createPara(row[0])] }),
+                    new TableCell({ borders: TABLE_BORDERS, children: [createPara(row[1])] }),
+                    new TableCell({ borders: TABLE_BORDERS, children: [createPara(row[2])] })
+                ]
+            })
+        );
+        return new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: [headerRow, ...dataRows] });
+    };
+
+
+    // 문서 생성
+    const doc = new Document({
+        styles: {
+            default: { run: { font: "맑은 고딕" } },
+            paragraphStyles: [
+                { id: "Subtitle", name: "Subtitle", basedOn: "Normal", next: "Normal", run: { size: 28, color: "777777" } },
+            ],
+        },
+        sections: [
+            {
+                children: [
+                    new Paragraph(titleStyle),
+                    new Paragraph(subtitleStyle),
+
+                    // 1. 프로젝트 요약
+                    createSectionHeading(1, "프로젝트 요약"),
+                    createTwoColTable(report.summaryTable),
+
+                    // 2. 문제 정의
+                    createSectionHeading(2, "문제 정의"),
+                    createPara(report.problemDefinition),
+
+                    // 3. 핵심 가치
+                    createSectionHeading(3, "핵심 가치"),
+                    new Paragraph({
+                        children: [new TextRun({ text: report.coreValueHighlight, size: 26, bold: true, color: "14213D" })],
+                        spacing: { after: 100 },
+                    }),
+                    createPara(report.coreValueText),
+
+                    // 4. 인사이트 근거
+                    createSectionHeading(4, "인사이트 근거"),
+                    createThreeColTable(report.insightTable),
+
+                    // 5. 서비스 개요
+                    createSectionHeading(5, "서비스 개요"),
+                    createTwoColTable(report.serviceTable.rows), // 헤더가 2개 뿐이라 rows만 사용
+
+                    // 6. 전략 제안
+                    createSectionHeading(6, "전략 제안"),
+                    ...report.strategyProposal.map((item, i) => createPara(`${i + 1}. ${item}`)),
+
+                    // 7. 기대 효과
+                    createSectionHeading(7, "기대 효과"),
+                    createThreeColTable(report.effectTable),
+                ],
+            }
+        ]
+    });
+
+    // 파일 생성 및 다운로드
+    Packer.toBlob(doc).then(blob => {
+        console.log("Word 문서 생성 완료");
         saveAs(blob, "AI_전략_제안서_초안.docx");
-
-    } catch (error) {
-        console.error("DOCX 생성 중 오류 발생:", error);
-        alert("보고서 파일 생성에 실패했습니다.");
-    }
+    }).catch(error => {
+        console.error("Word 문서 생성 오류:", error);
+    });
 }
 
 
@@ -351,6 +440,7 @@ function App() {
                             value={query}
                             onChange={(e) => setQuery(e.target.value)}
                             onKeyUp={(e) => { if (e.key === 'Enter') handleSearch(query); }}
+                            autoComplete = "off" // 이전 입력값 안 보이게
                         />
                         <button id="search-button" onClick={() => handleSearch(query)}>
                             분석 시작
@@ -375,7 +465,7 @@ function App() {
                             <section id="discovery-zone" className="workspace-section">
                                 <h2>추천 인사이트</h2>
 
-                                {/* A. 공통 특성 (단순 인사이트) */}
+                                {/* 공통 특성 (단순 인사이트) */}
                                 {recommendations.length > 0 && (
                                     <div className="discovery-subsection">
                                         <h3>공통 특성</h3>
@@ -391,7 +481,7 @@ function App() {
                                     </div>
                                 )}
 
-                                {/* B. AI 추천 전략 (엣지 서비스) */}
+                                {/* AI 추천 전략 */}
                                 {strategyCards.length > 0 && (
                                     <div className="discovery-subsection">
                                         <br></br>
@@ -440,7 +530,7 @@ function App() {
                 )}
             </div>
             
-            {/* --- 모달 렌더링 (2종류) --- */}
+            {/* 모달 렌더링 (2종류) */}
             {selectedPanel && (
                 <PanelDetailModal
                 isOpen={isPanelModalOpen}
@@ -561,6 +651,7 @@ function StrategyDetailModal({ isOpen, onClose, strategy }) {
                 <button id="strategy-modal-close-btn" title="닫기" onClick={onClose}>&times;</button>
                 <div className="modal-header">
                     <h3>{reportData?.projectName || "AI 전략 상세 보기"}</h3>
+                    <p className="report-subtitle">AI를 활용한 개인 맞춤형 루틴형 건강관리 제안서</p>
                 </div>
                 <div className="strategy-modal-content">
                     {reportData ? (
@@ -581,25 +672,155 @@ function StrategyDetailModal({ isOpen, onClose, strategy }) {
 function StrategyReportContent({ report }) {
     return (
         <div className="report-layout">
-            <div className="report-column">
-                <div className="report-item"><h4>🎯 추천 타겟 패널</h4><p>{report.targetPanel}</p></div>
-                <div className="report-item"><h4>🔍 인사이트 근거 (제안 이유)</h4><p>{report.insightReason}</p></div>
-                <div className="report-item"><h4>📈 시간 흐름에 따른 변화</h4><p>{report.timeChange}</p></div>
+
+            {/* 1. 프로젝트 요약 */}
+            <div className="report-section">
+                <h3><span>1</span> 프로젝트 요약</h3>
+                <table className="report-table">
+                    <tbody>
+                        <tr>
+                            <th>프로젝트명</th>
+                            <td>AI 헬스 코치 (가칭)</td>
+                        </tr>
+                        <tr>
+                            <th>타겟 고객</th>
+                            <td>수도권 30대 여성 직장인, 스마트워치 사용자, 건강 관심층</td>
+                        </tr>
+                        <tr>
+                            <th>핵심 인사이트</th>
+                            <td>'꾸준함' 관련 키워드 사용률 2.3배 증가, 웰니스 소비 1.8배 상승</td>
+                        </tr>
+                        <tr>
+                            <th>핵심 제안</th>
+                            <td>AI가 개인의 루틴 데이터를 분석해 지속 가능한 건강 습관을 디자인</td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
-            <div className="report-column">
-                <div className="report-item"><h4>🤔 문제 정의</h4>
-                    <p>
-                        {report.problemDefinition.split('\n').map((line, i) => (
-                            <React.Fragment key={i}>
-                                {line}
-                                <br/>
-                            </React.Fragment>
-                        ))}
-                    </p>
-                </div>
-                <div className="report-item"><h4>💎 핵심 가치</h4><p>{report.coreValue}</p></div>
-                <div className="report-item"><h4>🚀 서비스 컨셉</h4><p>{report.serviceConcept}</p></div>
-                <div className="report-item"><h4>🔥 추천 전략 제안</h4><ul>{report.strategyProposal.map((item, index) => (<li key={index}>{item}</li>))}</ul></div>
+
+            {/* 2. 문제 정의 */}
+            <div className="report-section">
+                <h3><span>2</span> 문제 정의</h3>
+                <p>
+                    바쁜 직장인들은 건강관리의 필요성을 인식하고 있으나, 지속적 실천과 맞춤형 루틴 관리의 부재로 실행률이 낮습니다. 기존 헬스케어 앱은 일시적 사용에 머무르고 있으며, 구독형 루틴 제공 서비스의 시장 공백이 존재합니다.
+                </p>
+            </div>
+
+            {/* 3. 핵심 가치 */}
+            <div className="report-section">
+                <h3><span>3</span> 핵심 가치</h3>
+                <p className="highlight-text">"꾸준함을 디자인한다"</p>
+                <p>
+                    데이터 기반 AI 분석으로 개인의 패턴에 최적화된 운동/영양/휴식 루틴을 자동 추천하여 건강한 습관을 형성하게 합니다.
+                </p>
+            </div>
+
+            {/* 4. 인사이트 근거 */}
+            <div className="report-section">
+                <h3><span>4</span> 인사이트 근거</h3>
+                <table className="report-table">
+                    <thead>
+                        <tr>
+                            <th>지표</th>
+                            <th>수치</th>
+                            <th>의미</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>스마트워치 보유율</td>
+                            <td>64%</td>
+                            <td>건강 관련 데이터 수집 기반 확대</td>
+                        </tr>
+                        <tr>
+                            <td>헬스 관련 소비 증가율</td>
+                            <td>+1.8배</td>
+                            <td>웰니스 산업 성장세 강화</td>
+                        </tr>
+                        <tr>
+                            <td>'꾸준함' 키워드 검색량</td>
+                            <td>+2.3배</td>
+                            <td>지속 가능한 루틴화 욕구 증가</td>
+                        </tr>
+                        <tr>
+                            <td>'홈트레이닝' 언급량</td>
+                            <td>+1.6배</td>
+                            <td>집중적 자기관리 트렌드 강화</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            {/* 5. 서비스 개요 */}
+            <div className="report-section">
+                <h3><span>5</span> 서비스 개요</h3>
+                <table className="report-table">
+                    <thead>
+                        <tr>
+                            <th>항목</th>
+                            <th>내용</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <th>서비스 형태</th>
+                            <td>AI 기반 건강 루틴 구독형 코칭 서비스</td>
+                        </tr>
+                        <tr>
+                            <th>핵심 기능</th>
+                            <td>데이터 분석 / 루틴 자동 추천 / AI 피드백</td>
+                        </tr>
+                        <tr>
+                            <th>차별점</th>
+                            <td>지속성 중심의 구독 + 개인화 루틴 추천 결합</td>
+                        </tr>
+                        <tr>
+                            <th>구독 모델</th>
+                            <td>무료 베이직 / 유료 프리미엄 / 전문가 매칭</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            {/* 6. 전략 제안 */}
+            <div className="report-section">
+                <h3><span>6</span> 전략 제안</h3>
+                <ol className="report-list">
+                    <li>스마트워치 연동형 MVP 출시</li>
+                    <li>B2B 제휴 (직장인 복지 플랫폼 / 보험사 등)</li>
+                    <li>AI 피드백 기능 및 목표 기반 루틴 강화</li>
+                </ol>
+            </div>
+
+            {/* 7. 기대 효과 */}
+            <div className="report-section">
+                <h3><span>7</span> 기대 효과</h3>
+                <table className="report-table">
+                    <thead>
+                        <tr>
+                            <th>구분</th>
+                            <th>정량적 효과</th>
+                            <th>정성적 효과</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>사용자</td>
+                            <td>앱 유지율 +30%</td>
+                            <td>루틴화 및 건강 동기 부여</td>
+                        </tr>
+                        <tr>
+                            <td>기업</td>
+                            <td>구독 매출 +15%</td>
+                            <td>브랜드 신뢰도 향상</td>
+                        </tr>
+                        <tr>
+                            <td>사회</td>
+                            <td>건강 실천율 향상</td>
+                            <td>헬스케어 데이터 활성화</td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </div>
     );
