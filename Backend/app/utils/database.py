@@ -1,18 +1,28 @@
 ﻿# app/utils/database.py
 
 import asyncpg
+import ssl
 from typing import List, Dict, Any
 from app.config.settings import get_settings
 
 settings = get_settings()
 
-_pool = None
+_pool: asyncpg.Pool = None
 
-async def get_db_connection_pool():
-    """DB ?곌껐 ?(Pool)??媛?몄샃?덈떎. ?놁쑝硫??덈줈 ?앹꽦?⑸땲??"""
+async def create_db_pool():
+    """
+    서버 시작 시 DB 연결 풀(Pool)을 생성합니다.
+    """
     global _pool
     if _pool is None:
         try:
+            # ✅ Neon용 SSL Context
+            ssl_context = None
+            if settings.POSTGRES_HOST != "localhost":
+                ssl_context = ssl.create_default_context()
+                ssl_context.check_hostname = False
+                ssl_context.verify_mode = ssl.CERT_NONE
+            
             _pool = await asyncpg.create_pool(
                 user=settings.POSTGRES_USER,
                 password=settings.POSTGRES_PASSWORD,
@@ -20,32 +30,42 @@ async def get_db_connection_pool():
                 host=settings.POSTGRES_HOST,
                 port=settings.POSTGRES_PORT,
                 min_size=1,
-                max_size=10
+                max_size=10,
+                ssl=ssl_context,
+                timeout=30,
+                command_timeout=30
             )
-            print("??Database connection pool created successfully.")
+            print("✅ Database connection pool created successfully.")
         except Exception as e:
-            print(f"??Database connection failed: {e}")
-            # ?ш린??ConnectionError瑜?raise?댁빞 search.py?먯꽌 503?쇰줈 媛먯???
-            raise ConnectionError(f"DB ?곌껐 ?ㅽ뙣: {e}")
-    return _pool
+            print(f"❌ Database connection pool creation failed: {e}")
+            raise ConnectionError(f"DB 풀 생성 실패: {e}")
+
+async def close_db_pool():
+    """
+    서버 종료 시 DB 연결 풀(Pool)을 닫습니다.
+    """
+    global _pool
+    if _pool:
+        await _pool.close()
+        _pool = None
+        print("✅ Database connection pool closed.")
 
 
 async def execute_fetch_query(sql_query: str) -> List[Dict[str, Any]]:
     """
-    SQL 荑쇰━瑜??ㅽ뻾?섍퀬 寃곌낵瑜??뺤뀛?덈━ 由ъ뒪???뺥깭濡?諛섑솚?⑸땲??
+    SQL 쿼리를 실행하고 결과를 딕셔너리 리스트 형태로 반환합니다.
     """
+    global _pool
+    
+    if _pool is None:
+        print("❌ DB Pool is not initialized. Check server startup.")
+        raise ConnectionError("DB 연결 풀이 초기화되지 않았습니다.")
+
     try:
-        pool = await get_db_connection_pool()
-        async with pool.acquire() as conn:
+        async with _pool.acquire() as conn:
             rows = await conn.fetch(sql_query)
             results = [dict(row) for row in rows]
-            print(f"??Query executed successfully. Rows fetched: {len(results)}")
             return results
-    except ConnectionError as ce:
-        # DB ?곌껐 ?ㅻ쪟 (search.py?먯꽌 503?쇰줈 蹂??
-        print(f"?좑툘 ConnectionError: {ce}")
-        raise
     except Exception as e:
-        # SQL ?ㅻ쪟??湲고? ?ㅽ뻾 以??ㅻ쪟
-        print(f"??SQL Execution Error: {e}")
-        raise ConnectionError(f"荑쇰━ ?ㅽ뻾 以??ㅻ쪟: {e}")
+        print(f"❌ SQL Execution Error: {e}")
+        raise ConnectionError(f"쿼리 실행 중 오류: {e}")
