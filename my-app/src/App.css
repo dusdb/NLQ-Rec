@@ -1,0 +1,936 @@
+/* Google Fonts에서 깔끔한 폰트 가져오기 */
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap');
+
+:root {
+    /*--primary-color: #4A90E2;*/
+    --primary-color: #14213D;
+    --background-color: #F4F7F9;
+    --card-background: #FFFFFF;
+    --text-color: #333;
+    --subtle-text-color: #777;
+    --border-color: #E0E6ED;
+    /*--highlight-color: #E7F0FE;*/
+    --highlight-color: #E1E1F2;
+    --logo-color: #14213D; 
+}
+
+body {
+    font-family: 'Noto Sans KR', sans-serif;
+    background-color: var(--background-color);
+    color: var(--text-color);
+    margin: 0;
+}
+
+#root {
+    padding: 2rem;
+    display: flex;
+    justify-content: center;
+}
+
+.container {
+    width: 100%;
+    max-width: 900px; 
+    display: flex;
+    flex-direction: column;
+    gap: 1.0rem;
+    transition: max-width 0.4s ease-in-out, min-height 0.4s ease; 
+
+    min-height: calc(100vh - 15rem);
+    justify-content: center;
+}
+
+.container.search-active {
+    max-width: 1200px;
+    justify-content: flex-start;
+}
+
+.hero-header {
+    text-align: center;
+    padding: 2rem 0;
+    transition: all 0.4s ease-in-out;
+}
+
+.hero-header h1 {
+    font-size: 2rem;
+    color: var(--logo-color);
+    margin: 0 0 1rem 0;
+}
+
+.hero-header p {
+    font-size: 1.1rem;
+    color: var(--subtle-text-color);
+    line-height: 1.6;
+}
+
+/* 로고 기본 스타일 (검색 전) */
+.logo {
+    width: 100px;
+    height: 100px;
+    object-fit: cover;
+    display: inline-block;
+    transition: width 0.4s ease, height 0.4s ease, margin 0.4s ease;
+}
+
+/* "검색 후" 보일 새 제목 (평소엔 숨김) */
+.app-title-active {
+    display: none;
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--logo-color);
+    margin: 0 0 0 1rem;
+}
+
+/* "검색 후" (.search-active) 헤더 스타일 */
+/* "검색 후" 헤더 레이아웃 변경 */
+.container.container.search-active .hero-header {
+    display: flex;
+    align-items: center;
+    text-align: left;
+    padding: 0 0.5rem 0;
+    margin-bottom: 0.5rem;
+}
+
+/* "검색 후" 로고 크기 축소 */
+.container.search-active .logo {
+    width: 80px;
+    height: 80px;
+}
+
+/* "검색 후" 기존 h1, p 숨기기 */
+.container.search-active .hero-header h1 {
+    display: none;
+}
+.container.search-active .hero-header p {
+    display: none;
+}
+
+/* "검색 후" 새로 추가한 h2 제목 보여주기 */
+.container.search-active .app-title-active {
+    display: block; /* 숨겼던 h2 제목 보이기 */
+}
+
+.workspace-section {
+    background-color: var(--card-background);
+    border-radius: 12px;
+    padding: 1.5rem 2rem;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    border: 1px solid var(--border-color);
+}
+
+.workspace-section h2 {
+    margin-top: 0;
+    font-size: 1.2rem;
+    border-bottom: 2px solid var(--primary-color);
+    padding-bottom: 0.5rem;
+    display: inline-block;
+}
+
+.results-header-wrapper {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem; /* p#results-count와의 간격 */
+}
+
+/* #main-stage의 h2 스타일 오버라이드 */
+#main-stage h2 {
+    margin-top: 0;
+    margin-bottom: 0;
+    border-bottom: 2px solid var(--primary-color);
+    padding-bottom: 0.5rem;
+    display: inline-block;
+}
+
+/* '패널 전체 보기' 버튼 스타일 */
+.view-all-btn {
+    background-color: transparent;
+    color: var(--primary-color);
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    font-weight: 500;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: background-color 0.2s;
+    height: fit-content; /* h2와 높이 맞춤용 */
+
+}
+
+.view-all-btn:hover {
+    background-color: var(--highlight-color);
+}
+
+/* '전체 패널 보기' 뷰 (페이지) 기본 스타일 */
+#all-panels-view {
+    width: 100%;
+    max-width: 1200px;
+    height: 100vh;
+    margin: 0 auto;
+    flex-direction: column;
+    background-color: var(--card-background);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    border-radius: 8px;
+    overflow: hidden;
+    animation: fadeInView 0.3s ease-out;
+}
+
+#all-panels-view.all-panels-view-container {
+    animation: fadeInView 0.3s ease-out;
+}
+
+/* App.js의 .all-panels-view-exiting 클래스에 적용 */
+#all-panels-view.all-panels-view-container.all-panels-view-exiting {
+    animation: fadeOutSlideRight 0.3s ease-out forwards;
+}
+
+/* '등장' 애니메이션 정의 */
+@keyframes fadeInView {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+/* '퇴장' 애니메이션 정의 */
+@keyframes fadeOutSlideRight {
+    from {
+        opacity: 1;
+        transform: translateX(0);
+    }
+    to {
+        opacity: 0;
+        transform: translateX(50px); /* 오른쪽으로 50px 밀려나며 사라짐 */
+    }
+}
+
+/* 패널 상세 정보 */
+.all-panels-header {
+    display: flex;
+    align-items: center;
+    padding: 1rem 1.5rem;
+    border-bottom: 2px solid var(--border-color);
+    flex-shrink: 0;
+}
+
+/* 전체 패널 목록에서 뒤로 가기 버튼 */
+.back-btn {
+    background: none;
+    border: 1px solid var(--border-color);
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    font-size: 1.5rem;
+    color: var(--primary-color);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 1.5rem;
+    transition: background-color 0.2s;
+}
+
+.back-btn:hover {
+    background-color: var(--highlight-color);
+}
+
+/* 전체 패널 목록 */
+#all-panels-title {
+    margin: 0;
+    font-size: 1.5rem;
+}
+
+.all-panels-content {
+    display: flex;
+    flex-grow: 1;
+    height: calc(100vh - 75px); /* 헤더 높이 제외 */
+}
+
+.panel-list-column {
+    flex: 0 0 400px; /* 400px 고정 너비 */
+    overflow-y: auto; /* 리스트 스크롤 */
+    border-right: 1px solid var(--border-color);
+    padding: 1rem;
+    background-color: var(--background-color);
+}
+
+/* 전체 패널 목록에서 왼쪽 리스트 내부의 패널 카드 스타일 */
+.panel-list-column .panel-card {
+    width: 100%;
+    box-sizing: border-box; /* padding 포함 100% */
+    margin-bottom: 1rem;
+}
+
+/* 전체 패널 목록에서 오른쪽 패널 상세 컬럼 */
+.panel-detail-column {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    padding: 2rem;
+}
+
+/* 전체 패널 목록에서 오른쪽 상세 뷰 (프로필 섹션 재사용) */
+/* 자기소개 전까지 */
+.panel-detail-column .profile-section {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+/* 전체 패널 목록에서 오른쪽 상세 뷰의 P */
+.panel-detail-column .profile-avatar {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background-color: var(--highlight-color);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 2rem;
+    font-weight: bold;
+    color: var(--primary-color);
+}
+
+/* 전체 패널 목록에서 오른쪽 상세 뷰의 <p> */
+.panel-detail-column .profile-summary p {
+    margin: 0.25rem 0;
+}
+
+/* 전체 패널 목록에서 오른쪽 상세 뷰의 이름 */
+.panel-detail-column .profile-summary .name {
+    font-size: 1.2rem;
+    font-weight: bold;
+}
+
+/* 전체 패널 목록에서 오른쪽 상세 뷰의 자기소개, 상세 정보 */
+.panel-detail-column .profile-details h4 {
+    font-size: 1.1rem;
+    color: var(--primary-color);
+    margin-bottom: 1rem;
+}
+
+/* 전체 패널 목록에서 오른쪽 상세 뷰의 ul */
+.panel-detail-column .profile-details ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.panel-detail-column .profile-details li {
+    padding: 0.75rem;
+    border-bottom: 1px solid var(--border-color);
+}
+.panel-detail-column .profile-details li:last-child {
+    border-bottom: none;
+}
+.panel-detail-column .profile-details li strong {
+    display: inline-block;
+    width: 100px;
+    color: var(--subtle-text-color);
+}
+.panel-detail-column .placeholder-text {
+    text-align: center; 
+    margin-top: 4rem; 
+    color: var(--subtle-text-color);
+}
+.panel-detail-wrapper {
+    animation: fadeInSlideUp 0.3s ease-out;
+}
+
+@keyframes fadeInSlideUp {
+    from {
+        opacity: 0;
+        transform: translateY(15px); /* 15px 아래에서 시작 */
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0); /* 제자리로 */
+    }
+}
+
+/* 1. 컨트롤 타워 */
+#control-tower .search-wrapper {
+    display: flex;
+    gap: 1rem;
+}
+
+#search-input {
+    flex-grow: 1;
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    transition: box-shadow 0.2s;
+}
+#search-input:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.3);
+}
+
+#search-button {
+    padding: 0.75rem 1.5rem;
+    font-size: 1rem;
+    font-weight: 500;
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+#search-button:hover {
+    background-color: black;
+}
+
+#filter-tags-container {
+    margin-top: 1rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    min-height: 24px;
+}
+
+.filter-tag {
+    display: flex;
+    align-items: center;
+    background-color: var(--highlight-color);
+    color: #4A6A9B;
+    padding: 0.4rem 0.8rem;
+    border-radius: 16px;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+.filter-tag button {
+    background: none;
+    border: none;
+    color: #4A6A9B;
+    margin-left: 0.5rem;
+    cursor: pointer;
+    font-size: 1rem;
+    padding: 0;
+    line-height: 1;
+}
+
+#results-wrapper {
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+}
+
+#results-wrapper.visible {
+     display: grid;
+}
+
+#results-count {
+     text-align: center;
+     font-size: 1.5rem;
+     font-weight: 700;
+     color: var(--primary-color);
+     margin-bottom: 1.5rem; 
+}
+
+#results-count strong {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--primary-color);
+}
+
+
+#panel-spotlight-container {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+}
+
+.panel-card {
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 1rem;
+    background-color: #FCFCFC;
+}
+.panel-card h4 {
+    margin: 0 0 1rem 0;
+    font-size: 1rem;
+    color: var(--primary-color);
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 0.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.panel-card ul {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--subtle-text-color);
+}
+.panel-card li {
+    margin-bottom: 0.5rem;
+}
+.panel-card strong {
+    color: var(--text-color);
+    font-weight: 500;
+}
+.panel-card .detail-btn {
+    background-color: transparent;
+    color: var(--primary-color);
+    border: none;
+    padding: 0.3rem 0.8rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 0.8rem;
+    transition: background-color 0.2s;
+}
+.panel-card .detail-btn:hover {
+    background-color: var(--highlight-color);
+}
+
+#recommendations-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+.recommendation-card {
+    background-color: #F8F9FA;
+    border: 1px solid var(--border-color);
+    border-left: 5px solid var(--primary-color);
+    padding: 1rem;
+    border-radius: 8px;
+}
+.recommendation-card p {
+    margin: 0 0 0.75rem 0;
+}
+.recommendation-card button {
+    background-color: white;
+    color: var(--primary-color);
+    border: 1px solid var(--primary-color);
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background-color 0.2s, color 0.2s;
+}
+.recommendation-card button:hover {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+#loader {
+    margin: 2rem auto;
+    border: 5px solid #f3f3f3;
+    border-top: 5px solid var(--primary-color);
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+#modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6);
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out;
+    pointer-events: none; /* 추가: 안 보일 땐 클릭 안 되게 */
+}
+#modal-overlay.visible {
+    opacity: 1;
+    pointer-events: auto; /* 추가: 보일 땐 클릭 되게 */
+}
+
+#panel-detail-modal {
+    position: fixed;
+    top: 0;
+    right: -450px; 
+    width: 400px;
+    height: 100%;
+    background-color: white;
+    box-shadow: -5px 0 15px rgba(0,0,0,0.1);
+    padding: 2rem;
+    z-index: 1001;
+    transition: right 0.4s ease-in-out;
+    overflow-y: auto;
+}
+#panel-detail-modal.open {
+    right: 0;
+}
+
+#panel-detail-modal .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid var(--primary-color);
+    padding-bottom: 1rem;
+    margin-bottom: 1.5rem;
+}
+#panel-detail-modal .modal-header h3 {
+    margin: 0;
+    font-size: 1.5rem;
+}
+#panel-modal-close-btn {
+    background: none;
+    border: none;
+    font-size: 2rem;
+    cursor: pointer;
+    color: var(--subtle-text-color);
+}
+
+#panel-modal-close-btn:hover {
+    color: var(--text-color);
+}
+
+.profile-section {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+.profile-avatar {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background-color: var(--highlight-color);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 2rem;
+    font-weight: bold;
+    color: var(--primary-color);
+}
+.profile-summary p {
+    margin: 0.25rem 0;
+}
+.profile-summary .name {
+    font-size: 1.2rem;
+    font-weight: bold;
+}
+.profile-details h4 {
+    font-size: 1.1rem;
+    color: var(--primary-color);
+    margin-bottom: 1rem;
+}
+.profile-details ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.profile-details li {
+    padding: 0.75rem;
+    border-bottom: 1px solid var(--border-color);
+}
+ .profile-details li:last-child {
+    border-bottom: none;
+}
+.profile-details li strong {
+    display: inline-block;
+    width: 100px;
+    color: var(--subtle-text-color);
+}
+
+#root {
+    padding: 2rem;
+    display: flex;
+    justify-content: center;
+}
+
+
+/* AI 전략 카드 및 모달 */
+/* 1. AI 전략 카드 컨테이너 (그리드) */
+#strategy-cards-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1rem;
+}
+
+/* 2. AI 전략 카드 */
+.strategy-card {
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background-color: var(--card-background);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.strategy-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.07);
+}
+
+.strategy-card-header {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.strategy-type {
+    font-size: 0.8rem;
+    font-weight: 700;
+    padding: 0.25rem 0.6rem;
+    border-radius: 12px;
+    background-color: var(--highlight-color);
+    color: var(--primary-color);
+}
+/* 예시: 태그 타입별 색상 (선택 사항) */
+.strategy-type.마케팅-전략 { background-color: #E2F5EA; color: #34A853; }
+.strategy-type.제품-전략 { background-color: #FEF3E0; color: #F9AB00; }
+
+
+.strategy-card-body {
+    padding: 1rem;
+    flex-grow: 1; /* 카드가 길이를 채우도록 */
+}
+.strategy-card-body h3 {
+    font-size: 1.15rem;
+    margin-top: 0;
+    margin-bottom: 0.75rem;
+    border: none;
+    padding: 0;
+}
+.strategy-card-body p {
+    font-size: 0.9rem;
+    color: var(--subtle-text-color);
+    margin: 0.4rem 0;
+}
+.strategy-card-body p strong {
+    color: var(--text-color);
+}
+
+.strategy-card-footer {
+    padding: 1rem;
+    border-top: 1px solid var(--border-color);
+    background-color: #FAFBFC;
+}
+.strategy-card-footer button {
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 0.6rem 1rem;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 0.9rem;
+    width: 100%;
+    transition: background-color 0.2s;
+}
+.strategy-card-footer button:hover {
+    background-color: black;
+}
+
+/* 3. AI 전략 상세 모달 (대형 모달) */
+.strategy-detail-modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0.9); /* 시작 시 약간 작게 */
+    width: 90%;
+    max-width: 1000px; /* 훨씬 크게 */
+    height: 85vh; /* 높이도 크게 */
+    background-color: white;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    z-index: 1001;
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column; /* 헤더, 본문, 푸터 수직 정렬 */
+    opacity: 0;
+    transition: transform 0.3s ease-out, opacity 0.3s ease-out;
+    pointer-events: none; /* 안 보일 땐 클릭 안 되게 */
+    overflow: hidden;
+}
+.strategy-detail-modal.open {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+    pointer-events: auto;
+}
+/* 전략 모달 닫기 버튼 (오른쪽 상단) */
+#strategy-modal-close-btn {
+    background: none;
+    border: none;
+    font-size: 2rem;
+    cursor: pointer;
+    color: var(--subtle-text-color);
+
+    /* 컨테이너 오른쪽 상단에 배치 */
+    position: absolute;
+    top: 1rem;
+    right: 1.5rem;
+    z-index: 1002; /* 모달 헤더보다 위에 오도록 */
+    padding: 0.5rem;
+    line-height: 1;
+}
+#strategy-modal-close-btn:hover {
+    color: var(--text-color);
+}
+
+.strategy-detail-modal .modal-header {
+    font-size: 1.5rem;
+    padding-top: 0.7rem;
+    padding-left: 2.5rem;
+    padding-right: 3.5rem;
+    border-bottom: 1px solid var(--border-color); /* 헤더와 콘텐츠 구분선 */
+    background-color: var(--highlight-color);
+
+}
+
+/* 헤더 안의 h3 제목 태그의 기본 하단 여백 제거 */
+.strategy-detail-modal .modal-header h3 {
+    margin-bottom: 0;
+}
+
+/* 전략 모달 내부 레이아웃 */
+.strategy-modal-content {
+    flex-grow: 1;
+    overflow-y: auto;
+    padding: 1.5rem 2.5rem;
+    /* 닫기 버튼이 헤더 위에 있으므로, 헤더의 패딩을 늘림 */
+    padding-top: 0; /* 헤더에서 이미 띄웠으므로 */
+}
+
+.strategy-modal-footer {
+    padding: 1rem 2.5rem;
+    border-top: 1px solid var(--border-color);
+    background-color: #F9FAFB;
+    text-align: right;
+}
+.download-btn {
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    font-size: 1rem;
+    font-weight: 700;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+.download-btn:hover {
+    background-color: black;
+}
+.download-btn:disabled {
+    background-color: var(--subtle-text-color);
+    cursor: not-allowed;
+}
+
+
+/* 보고서 내용 레이아웃 */
+.report-layout {
+    display: block;
+}
+
+/* 모달 제목 아래 부제목 */
+.report-subtitle {
+    font-size: 1rem;
+    color: var(--subtle-text-color);
+    margin-top: 0.25rem; /* 헤더와의 간격 조정 */
+    margin-bottom: 1.5rem;
+    padding-bottom: 0rem;
+}
+
+/* 1, 2, 3... 각 섹션 스타일 */
+.report-section {
+    background-color: var(--card-background);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 1.5rem 2rem;
+    margin-top: 2.5rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+}
+
+/* 기존 .report-item h4 스타일 덮어쓰기 */
+.report-item h4 {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+/* 섹션 제목 (예: 1 프로젝트 요약) */
+.report-section h3 {
+    font-size: 1.3rem;
+    color: var(--primary-color);
+    margin-top: 0;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    /* .report-item h4 로부터 상속받은 스타일 초기화 */
+    border-bottom: none;
+    padding-bottom: 0; 
+}
+
+/* 섹션 제목 앞 수직 바 */
+.report-section h3::before {
+    content: '';
+    display: inline-block;
+    width: 6px;
+    height: 28px;
+    background-color: var(--primary-color);
+    margin-right: 0.75rem;
+    border-radius: 2px;
+}
+
+/* 섹션 제목 숫자 (예: '1') */
+.report-section h3 span {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--primary-color);
+    margin-right: 0.5rem;
+}
+
+/* 섹션 내부 테이블 스타일 */
+.report-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.95rem;
+}
+
+.report-table th,
+.report-table td {
+    border: 1px solid var(--border-color);
+    padding: 0.75rem 1rem;
+    text-align: left;
+    line-height: 1.6;
+}
+
+/* 테이블 항목명 (왼쪽 열) */
+.report-table th {
+    background-color: #F9FAFB;
+    font-weight: 700;
+    width: 25%;
+}
+
+/* 테이블 헤더 (thead) */
+.report-table thead th {
+    background-color: #F4F7F9;
+    color: var(--primary-color);
+    text-align: left;
+    width: auto; /* 헤더는 자동 너비 */
+}
+
+/* "꾸준함을 디자인한다" 하이라이트 텍스트 */
+.highlight-text {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--primary-color);
+    margin-bottom: 0.5rem !important;
+}
+
+/* 6. 전략 제안 (ol) 리스트 */
+.report-list {
+    font-size: 0.95rem;
+    line-height: 1.8;
+    padding-left: 25px;
+}
+
+.report-list li {
+    margin-bottom: 0.5rem;
+}
