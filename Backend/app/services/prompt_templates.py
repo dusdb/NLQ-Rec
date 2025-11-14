@@ -6,6 +6,7 @@ Updated for: panel_master table schema (Neon DB)
 import json
 from typing import Dict, List, Any
 
+
 class PromptTemplates:
     """프롬프트 템플릿 관리 클래스"""
     
@@ -80,7 +81,7 @@ class PromptTemplates:
         return prompt
     
     # =====================================================
-    # 3. SQL 쿼리 생성 (HAIKU) - 핵심 수정됨!
+    # 3. SQL 쿼리 생성 (HAIKU) - NULL 처리 완벽!
     # =====================================================
     
     @staticmethod
@@ -98,31 +99,30 @@ class PromptTemplates:
         sql_hints = []
         current_year = 2025  # 기준 연도
 
-        # (1) 나이 -> 출생년도 변환
-        if 'age_range' in conditions:
+        # (1) 나이 -> 출생년도 변환 (NULL 안전 처리!)
+        if conditions.get('age_range') is not None:
             age_range = conditions['age_range']
-            min_age = age_range.get('min', 0)
-            max_age = age_range.get('max', 100)
-            # 2025년 기준: 20세 = 2005년생, 29세 = 1996년생
-            # SQL: birth_year BETWEEN 1996 AND 2005
-            start_year = current_year - max_age
-            end_year = current_year - min_age
-            sql_hints.append(f"birth_year BETWEEN {start_year} AND {end_year}")
+            if isinstance(age_range, dict):
+                min_age = age_range.get('min') or 0
+                max_age = age_range.get('max') or 100
+                start_year = current_year - max_age
+                end_year = current_year - min_age
+                sql_hints.append(f"birth_year BETWEEN {start_year} AND {end_year}")
 
         # (2) 성별
-        if 'gender' in conditions:
+        if conditions.get('gender') is not None:
             sql_hints.append(f"gender = '{conditions['gender']}'")
 
         # (3) 지역 (시/도)
-        if 'location' in conditions:
+        if conditions.get('location') is not None:
             sql_hints.append(f"region_main LIKE '%{conditions['location']}%'")
         
         # (4) 상세 지역 (구/군)
-        if 'district' in conditions:
+        if conditions.get('district') is not None:
             sql_hints.append(f"region_sub LIKE '%{conditions['district']}%'")
 
         # (5) 직업 (카테고리 또는 상세)
-        if 'job' in conditions:
+        if conditions.get('job') is not None:
             sql_hints.append(f"(job_category LIKE '%{conditions['job']}%' OR job_detail LIKE '%{conditions['job']}%')")
         
         hints_text = " AND ".join(sql_hints) if sql_hints else "1=1"
@@ -152,7 +152,7 @@ SQL 생성:"""
         return prompt
     
     # =====================================================
-    # 4. 인사이트 추출 (OPUS) - 컬럼명 수정됨
+    # 4. 인사이트 추출 (OPUS)
     # =====================================================
     
     @staticmethod
@@ -163,7 +163,7 @@ SQL 생성:"""
         sample_size = min(50, len(panel_data))
         sampled_data = panel_data[:sample_size]
         
-        # 데이터 요약 시 실제 컬럼명 사용 (birth_year, region_main 등)
+        # 데이터 요약 시 실제 컬럼명 사용
         data_summary = "\n".join([
             f"- ID {p.get('panel_id', 'N/A')}: {p.get('birth_year', 'N/A')}년생, {p.get('gender', 'N/A')}, "
             f"{p.get('region_main', 'N/A')} {p.get('region_sub', '')}, {p.get('job_category', 'N/A')}"

@@ -19,10 +19,11 @@ class Settings(BaseSettings):
     # Claude API 설정 (여러 변수명 지원)
     anthropic_api_key: str
     
-    # 모델 역할별 설정
-    CLAUDE_QUERY_ANALYSIS_MODEL: str = "claude-3-haiku-20240307"
-    CLAUDE_SQL_GENERATION_MODEL: str = "claude-3-haiku-20240307"
-    CLAUDE_INSIGHT_EXTRACTION_MODEL: str = "claude-3-haiku-20240307"
+    # 모델 역할별 설정 (API 정확 모델명)
+    CLAUDE_QUERY_ANALYSIS_MODEL: str = "claude-opus-4-1"  # 쿼리 해석
+    CLAUDE_SQL_GENERATION_MODEL: str = "claude-haiku-4-5"  # SQL 생성 (최신)
+    CLAUDE_INSIGHT_EXTRACTION_MODEL: str = "claude-opus-4-1"  # 인사이트 추출
+    CLAUDE_RESULT_VALIDATION_MODEL: str = "claude-sonnet-4-5"  # 결과 검증
     
     # API 제한 설정
     max_tokens: int = 4096
