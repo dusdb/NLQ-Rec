@@ -17,3 +17,7 @@ anthropic>=0.40.0
 pydantic>=2.4.0
 pydantic-settings==2.4.0
 asyncpg
+
+#
+pgvector==0.3.6
+sentence-transformers==3.3.1
