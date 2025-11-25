@@ -290,42 +290,54 @@ async def search_panels(request: SearchRequest):
                 insights = insight_result.get('data', {})
                 
                 # ========================================
-                # Step 6: recommendations 생성
+                # Step 6: 임베딩 평균 기반 추천 생성 (NEW)
                 # ========================================
 
-                print("Step 6: Creating recommendations...")
+                print("Step 6: Creating recommendations (embedding-based)...")
                 step6_start = time.time()
 
-                current_statistics = {
-                    "job_distribution": job_stats,
-                    "location_distribution": location_stats,
-                    "age_distribution": age_stats,
-                    "gender_distribution": gender_stats,
-                    "income_distribution": income_stats,
-                    "total_count": len(converted_panels)
-                }
-
                 if converted_panels:
-                    from app.services.recommendation import recommendation_engine
-
-                    raw_patterns = insights.get('hidden_patterns', [])
-
-                    filtered_patterns = recommendation_engine.filter_patterns(
-                        patterns=raw_patterns,
+                    # 임베딩 기반 엔진 import
+                    from app.services.embedding_insight import embedding_insight_engine
+                    
+                    # 패널 UUID 리스트 추출
+                    panel_uuids = [p['panel_uuid'] for p in converted_panels if p.get('panel_uuid')]
+                    
+                    print(f"📊 임베딩 분석 대상: {len(panel_uuids)}명")
+                    
+                    # 임베딩 평균 기반 인사이트 추출
+                    embedding_insights = await embedding_insight_engine.extract_insights_by_embedding(
+                        panel_uuids=panel_uuids,
                         search_conditions=search_conditions,
-                        full_statistics=current_statistics  
+                        top_k=2  # 상위 2개만 선정
                     )
                     
-                    print(f"필터링 결과: {len(raw_patterns)}개 -> {len(filtered_patterns)}개 유효 패턴")
-
-                    recommendations = recommendation_engine.generate_recommendations(
-                        filtered_patterns=filtered_patterns,
-                        max_count=2
-                    )
+                    print(f"✅ 임베딩 기반 인사이트: {len(embedding_insights)}개 발견")
                     
-                    print(f"최종 {len(recommendations)}개 추천 생성")
+                    # 추천 버튼 생성
+                    recommendations = []
+                    for i, insight in enumerate(embedding_insights):
+                        keyword = insight['value']
+                        similarity = insight['similarity']
+                        
+                        recommendations.append({
+                            "id": f"rec-embedding-{i+1}",
+                            "text": insight['insight'],
+                            "action": {
+                                "buttonText": f"+ '{keyword}' 추가",
+                                "data": {
+                                    "type": "embedding_insight",
+                                    "value": keyword,
+                                    "queryPart": keyword,
+                                    "similarity": similarity
+                                }
+                            }
+                        })
+                    
+                    print(f"최종 {len(recommendations)}개 추천 생성 (임베딩 기반)")
 
                 else:
+                    # 검색 결과 없을 때 대체 추천
                     suggestions = []
                     
                     if search_conditions.get('location') == '지방':
@@ -348,98 +360,11 @@ async def search_panels(request: SearchRequest):
                             }
                         })
                     
-                    if not suggestions:
-                        suggestions.append({
-                            "id": "rec-general",
-                            "text": f"'{request.query}' 조건이 너무 구체적입니다. 조건을 하나씩 줄여보세요.",
-                            "action": {
-                                "buttonText": "조건 단순화하기",
-                                "data": { "type": "suggestion", "value": "조건 완화", "queryPart": "" }
-                            }
-                        })
-                    
-                    recommendations = suggestions
-                    print(f"{len(recommendations)}개 조건 완화 추천 생성")
+                    recommendations = suggestions[:2]
 
                 step6_time = round(time.time() - step6_start, 3)
-                time_logs['step6_recommendation'] = step6_time
-                print(f"Step 6 완료: {len(recommendations)}개 추천 생성")
-                
-                # ========================================
-                # Step 6: recommendations 생성 (동적 엔진 적용)
-                # ========================================
-
-                print("Step 6: Creating recommendations...")
-                step6_start = time.time()
-
-                current_statistics = {
-                    "job_distribution": job_stats,
-                    "location_distribution": location_stats,
-                    "age_distribution": age_stats,
-                    "gender_distribution": gender_stats,
-                    "income_distribution": income_stats,
-                    "total_count": len(converted_panels)
-                }
-
-                if converted_panels:
-                    from app.services.recommendation import recommendation_engine
-
-                    raw_patterns = insights.get('hidden_patterns', [])
-                    
-                    filtered_patterns = recommendation_engine.filter_patterns(
-                        patterns=raw_patterns,
-                        search_conditions=search_conditions,
-                        full_statistics=current_statistics
-                    )
-                    
-                    print(f"   필터링 결과: {len(raw_patterns)}개 -> {len(filtered_patterns)}개 유효 패턴")
-                    
-                    recommendations = recommendation_engine.generate_recommendations(
-                        filtered_patterns=filtered_patterns,
-                        max_count=2
-                    )
-                    
-                    print(f"   최종 {len(recommendations)}개 추천 생성")
-
-                else:
-                    suggestions = []
-                    
-                    if search_conditions.get('location') == '지방':
-                        suggestions.append({
-                            "id": "rec-location-busan",
-                            "text": "지방 전체가 아닌 특정 지역(예: 부산, 대구)을 지정해보세요.",
-                            "action": {
-                                "buttonText": "지역 구체화하기",
-                                "data": { "type": "suggestion", "value": "부산", "queryPart": "부산" }
-                            }
-                        })
-                    
-                    if search_conditions.get('income_keyword'):
-                        suggestions.append({
-                            "id": "rec-income-remove",
-                            "text": "소득 조건이 너무 엄격할 수 있습니다. 조건을 완화해보세요.",
-                            "action": {
-                                "buttonText": "소득 조건 제거",
-                                "data": { "type": "suggestion", "value": "소득 무관", "queryPart": "" }
-                            }
-                        })
-                    
-                    if not suggestions:
-                        suggestions.append({
-                            "id": "rec-general",
-                            "text": f"'{request.query}' 조건이 너무 구체적입니다. 조건을 하나씩 줄여보세요.",
-                            "action": {
-                                "buttonText": "조건 단순화하기",
-                                "data": { "type": "suggestion", "value": "조건 완화", "queryPart": "" }
-                            }
-                        })
-                    
-                    recommendations = suggestions
-                    print(f"   {len(recommendations)}개 조건 완화 추천 생성")
-
-                step6_time = round(time.time() - step6_start, 3)
-                time_logs['step6_recommendation'] = step6_time
-                print(f"Step 6 완료: {len(recommendations)}개 추천 생성")
+                time_logs['step6_recommendations'] = step6_time
+                print(f"Step 6 소요시간: {step6_time}초")
 
                 # ========================================
                 # Step 7: strategyCards 생성
