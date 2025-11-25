@@ -75,6 +75,12 @@ async def search_panels(request: SearchRequest):
         conditions_json = analysis_result.get('data', {})
         search_conditions = conditions_json.get('search_conditions', {})
         
+        extracted_count = conditions_json.get('target_count')
+        target_count = extracted_count if extracted_count else request.top_k
+
+        print(f"🎯 타겟 인원수: {target_count}명 (추출: {extracted_count}, 기본: {request.top_k})")
+
+
         # ========================================
         # Step 2: SQL 생성 (Haiku)
         # ========================================
@@ -84,7 +90,7 @@ async def search_panels(request: SearchRequest):
 
         sql_generation_result = claude_service.generate_sql(
             analyzed_query=conditions_json,
-            target_count=request.top_k
+            target_count=target_count
         )
         
         step2_time = round(time.time() - step2_start, 3)
@@ -100,9 +106,9 @@ async def search_panels(request: SearchRequest):
 
         print(f"Step 3: Determining optimal search strategy...")
         step3_start = time.time()
-        
+
         actual_mode = request.search_mode
-        
+
         if request.search_mode == "hybrid":
             needs_vector = should_use_vector_search(request.query, search_conditions)
             
@@ -112,9 +118,9 @@ async def search_panels(request: SearchRequest):
             else:
                 print("→ 하이브리드 모드 유지")
                 actual_mode = "hybrid"
-        
+
         print(f"Step 3: Executing {actual_mode.upper()} search...")
-        
+
         if actual_mode == "rdb":
             if not sql_query: 
                 raise ValueError("SQL generation failed")
@@ -126,18 +132,18 @@ async def search_panels(request: SearchRequest):
             }
             
         elif actual_mode == "vector":
-            filtered_panels = search_agent.semantic_search(request.query, request.top_k)
+            filtered_panels = search_agent.semantic_search(request.query, target_count)  # 🆕 변경
             search_metadata = {"search_type": "vector_only", "vector_used": True}
             
         elif actual_mode == "hybrid":
-            filtered_panels = search_agent.hybrid_search(request.query, search_conditions, request.top_k)
+            filtered_panels = search_agent.hybrid_search(request.query, search_conditions, target_count)  # 🆕 변경
             search_metadata = {
                 "search_type": "hybrid",
                 "sql_executed": True, 
                 "vector_used": True,
                 "conditions_applied": list(search_conditions.keys())
             }
-        
+
         else:
             raise ValueError(f"Invalid search_mode: {actual_mode}")
 
@@ -145,7 +151,7 @@ async def search_panels(request: SearchRequest):
         if not filtered_panels and actual_mode in ["rdb", "hybrid"]:
             print(f"정확한 매칭 결과 없음. 유사도 기반 검색(Vector Only)으로 전환합니다...")
             
-            filtered_panels = search_agent.semantic_search(request.query, top_k=request.top_k)
+            filtered_panels = search_agent.semantic_search(request.query, top_k=target_count)  # 🆕 변경
             is_fallback = True
             
             search_metadata = {
@@ -158,7 +164,7 @@ async def search_panels(request: SearchRequest):
         time_logs['step3_search_exec'] = step3_time
         print(f"Step 3 완료: {len(filtered_panels)}명 검색됨 (Fallback: {is_fallback})")
         print(f"Step 3 소요시간: {step3_time}초")
-        
+
         # ========================================
         # Step 4: 데이터 변환
         # ========================================
