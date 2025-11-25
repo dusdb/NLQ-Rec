@@ -373,11 +373,11 @@ async def search_panels(request: SearchRequest):
                 print("Step 7: Creating strategy card metadata...")
                 step7_start = time.time()
                 
-                strategy_type_map = {
-                    "rdb": "RDB 분석",
-                    "vector": "벡터 유사도 분석",
-                    "hybrid": "하이브리드 분석 (RDB + Vector)"
-                }
+                # strategy_type_map = {
+                #     # "rdb": "RDB 분석",
+                #     # "vector": "벡터 유사도 분석",
+                #     # "hybrid": "하이브리드 분석 (RDB + Vector)"
+                # }
                 
                 target_profile = insights.get('target_profile', {})
                 core_demo = target_profile.get('core_demographic', '타겟 그룹')
@@ -394,7 +394,8 @@ async def search_panels(request: SearchRequest):
                         "id": "strategy-001",
                         "strategyName": strategy_name,
                         "coreTarget": ", ".join(key_chars[:3]) if key_chars else core_demo,
-                        "strategyType": strategy_type_map.get(actual_mode, "통합 분석"),
+                        "strategyType": "",
+
                         "keywords": ", ".join([
                             p.get('feature', '') 
                             for p in insights.get('hidden_patterns', [])[:3]
