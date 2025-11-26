@@ -30,15 +30,15 @@ class SonnetService(ClaudeBase):
     ) -> Dict[str, Any]:
         """
         통합 인사이트 추출:
-        1) 의미 기반 토픽 추출 (새로 추가)
-        2) 상세 패턴 발견 (기존 유지)
-        3) 자연스러운 요약 생성 (새로 추가)
+        1) answer_text 기반 의미 토픽 추출 (semantic_topics)
+        2) 정형 데이터 기반 상세 패턴(hidden_patterns)
+        3) 위 둘을 통합한 요약(summary)
         """
         try:
-            # ===== 1) 의미 기반 토픽 추출 (새로 추가) =====
+            # 1) 비정형 응답에서 의미 토픽 추출
             semantic_topics = self._extract_semantic_topics(panel_data)
             
-            # ===== 2) 상세 패턴 발견 (기존 로직) =====
+            # 2) 정형 데이터 기반 상세 패턴 추출 (기존 로직)
             sample_size = min(50, len(panel_data))
             sampled_data = panel_data[:sample_size]
             
@@ -67,30 +67,44 @@ class SonnetService(ClaudeBase):
                     "error": "JSON 파싱 실패"
                 }
             
-            # 필터링 (기존 로직)
+            # 2-1) "미기재" 등 쓸모 없는 인사이트 제거
             filtered_patterns = self._filter_invalid_insights(
                 parsed_result.get('hidden_patterns', [])
             )
+
+            # 🔹 2-2) semantic_topics를 hidden_patterns 형태로 감싸서 맨 앞에 추가
+            semantic_patterns = []
+            for topic in semantic_topics:
+                semantic_patterns.append({
+                    "feature": "semantic_topic",
+                    "value": topic,
+                    "percentage": None,
+                    "insight": f"이 그룹은 '{topic}' 특성과 높은 연관성을 보입니다.",
+                    "confidence": "high"
+                })
             
-            # ===== 3) 자연스러운 요약 생성 (새로 추가) =====
+            # 의미 기반 패턴 + 정형 패턴을 하나의 리스트로 통합
+            combined_patterns = semantic_patterns + filtered_patterns
+            
+            # 3) 의미 토픽 + 패턴 + 통계를 기반으로 자연어 요약 생성
             insight_summary = self._generate_natural_summary(
                 semantic_topics,
-                filtered_patterns,
+                combined_patterns,
                 full_statistics,
                 original_query
             )
             
-            # ===== 최종 결과 통합 =====
+            # 최종 반환
             return {
                 "success": True,
                 "data": {
                     "summary": insight_summary,
                     "semantic_topics": semantic_topics,
-                    "hidden_patterns": filtered_patterns
+                    "hidden_patterns": combined_patterns
                 },
                 "raw_response": response_text,
                 "filtered_count": {
-                    "valid": len(filtered_patterns),
+                    "valid": len(combined_patterns),
                     "removed": len(parsed_result.get('hidden_patterns', [])) - len(filtered_patterns)
                 }
             }

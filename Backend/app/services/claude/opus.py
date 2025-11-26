@@ -24,9 +24,10 @@ class OpusService(ClaudeBase):
     def analyze_query(self, user_query: str, use_parser: bool = True) -> Dict[str, Any]:
         try:
             pre_analysis = None
+
+            # ===== 1) 로컬 파서로 1차 분석 =====
             if use_parser:
                 parsed_data = self.query_parser.full_parse_and_augment(user_query)
-                
                 target_count = self.query_parser.extract_target_count(user_query)
 
                 pre_analysis = {
@@ -38,6 +39,7 @@ class OpusService(ClaudeBase):
                 }
                 print(f"Pre-analysis: {json.dumps(pre_analysis, ensure_ascii=False, indent=2)}")
             
+            # ===== 2) LLM에게 정식 분석 요청 =====
             schema = self.prompt_templates.load_schema()
             prompt = self.prompt_templates.query_analysis_prompt(user_query, schema)
             system_message = self.prompt_templates.get_system_message('analyzer')
@@ -56,8 +58,28 @@ class OpusService(ClaudeBase):
             
             if parsed_result:
 
-                if pre_analysis and pre_analysis.get('target_count'):
-                    parsed_result['target_count'] = pre_analysis['target_count']
+                # 🔹 3) 로컬 파서 조건을 LLM 결과에 병합 (여기가 중요)
+                if pre_analysis:
+                    parsed_conditions = pre_analysis.get("parsed_conditions") or {}
+                    if parsed_conditions:
+                        llm_conditions = parsed_result.get("search_conditions") or {}
+                        
+                        # 파서가 뽑은 조건이 있고, LLM이 비워둔 필드만 덮어쓰기
+                        for key, value in parsed_conditions.items():
+                            if value is None:
+                                continue
+                            if key not in llm_conditions or llm_conditions[key] in (None, "", [], {}):
+                                llm_conditions[key] = value
+                        
+                        parsed_result["search_conditions"] = llm_conditions
+                        print(
+                            "Merged search_conditions: "
+                            f"{json.dumps(llm_conditions, ensure_ascii=False, indent=2)}"
+                        )
+
+                    # 기존 target_count 반영 로직 유지
+                    if pre_analysis.get('target_count'):
+                        parsed_result['target_count'] = pre_analysis['target_count']
                 
                 return {
                     "success": True,
