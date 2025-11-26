@@ -812,7 +812,7 @@ const PanelDetail = ({ panel, onClose }) => {
                     <div className="info-grid">
                       {items.map((item, index) => (
                         <div key={index} className="info-row">
-                          <span className="info-label">{item.label}:</span>
+                          <span className="info-label">{item.label}: </span>
                           <span className="info-value">{item.value}</span>
                         </div>
                       ))}
