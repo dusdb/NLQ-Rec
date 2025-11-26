@@ -9,7 +9,7 @@ v3.0 변경사항:
 """
 from typing import Dict, Any, List, Optional
 import logging
-import re
+import re  # 🔹 generate_recommendations에서 re 사용
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +21,7 @@ class RecommendationEngine:
             'job': ['detail', 'job_detail', '세부', '직무'],
         }
         
+        # 🔹 공통 특성으로 의미 없는 값(사소한 키워드) 필터링용
         self.TRIVIAL_KEYWORDS = [
             '대한민국', '한국', '응답자', '전체', '설문', 
             '미기재', '정보 없', '데이터 부족', '수집되지 않',
@@ -117,6 +118,10 @@ class RecommendationEngine:
         return False
 
     def is_condition_applied(self, search_conditions: Dict, feature_group: str, value: str = "") -> bool:
+        """
+        자연어 질의(검색 조건)에 이미 포함된 그룹인지 확인하는 함수.
+        예: 20대 서울 사는 남성 → age, location, gender는 True가 되도록.
+        """
         if not search_conditions:
             return False
             
@@ -127,10 +132,13 @@ class RecommendationEngine:
             return search_conditions.get('gender') is not None
             
         elif feature_group == 'location':
+            # 수도권 등 상위 개념도 고려
             if '수도권' in value and (search_conditions.get('location') or search_conditions.get('district')):
                 return True
-            return (search_conditions.get('location') is not None or 
-                    search_conditions.get('district') is not None)
+            return (
+                search_conditions.get('location') is not None or 
+                search_conditions.get('district') is not None
+            )
             
         elif feature_group == 'job':
             return search_conditions.get('job') is not None
@@ -143,63 +151,40 @@ class RecommendationEngine:
             
         return False
 
-    def calculate_lift(
-        self,
-        pattern_percentage: float,
-        feature_key: str,
-        value_key: str,
-        full_statistics: Dict
-    ) -> Optional[float]:
-        if not full_statistics:
-            return None
-            
-        stat_key_map = {
-            'job': 'job_distribution', '직업': 'job_distribution',
-            'location': 'location_distribution', '지역': 'location_distribution',
-            'age': 'age_distribution', '나이': 'age_distribution',
-            'gender': 'gender_distribution', '성별': 'gender_distribution',
-            'income': 'income_distribution', '소득': 'income_distribution'
-        }
+    def is_drilldown_allowed(self, search_conditions: Dict, feature: str) -> bool:
+        """
+        더 세부적인 드릴다운이 허용되는지 판단.
+        예: location은 광역 → 기초로 내려갈 때만 허용 등.
+        """
+        feature_lower = feature.lower()
         
-        target_stat_key = None
-        for key, stat_name in stat_key_map.items():
-            if key in feature_key.lower():
-                target_stat_key = stat_name
-                break
+        # 위치 계층
+        if any(keyword in feature_lower for keyword in self.HIERARCHY_MAP['location']):
+            has_location = search_conditions.get('location') is not None
+            has_district = search_conditions.get('district') is not None
+            # location은 있는데 district는 없으면 → 드릴다운 허용
+            return has_location and not has_district
         
-        if not target_stat_key or target_stat_key not in full_statistics:
-            return None
+        # 직업 계층
+        if any(keyword in feature_lower for keyword in self.HIERARCHY_MAP['job']):
+            return search_conditions.get('job') is not None
             
-        stats = full_statistics[target_stat_key]
-        total_count = full_statistics.get('total_count', 1)
-        
-        baseline_count = 0
-        for k, v in stats.items():
-            if str(value_key) in str(k) or str(k) in str(value_key):
-                baseline_count += v
-                
-        if baseline_count == 0:
-            return None
-            
-        baseline_percentage = (baseline_count / total_count) * 100
-        if baseline_percentage == 0:
-            return None
-            
-        return pattern_percentage / baseline_percentage
+        return False
+
+    # 🔻 기존 lift 계산 함수는 더 이상 사용하지 않으므로 제거(혹은 남겨도 되지만 여기선 삭제)
+    # def calculate_lift(...):  # 제거됨
+    #     ...
 
     def filter_patterns(
         self,
         patterns: List[Dict],
         search_conditions: Dict,
-        full_statistics: Optional[Dict] = None
+        full_statistics: Optional[Dict] = None  # 🔹 시그니처는 유지하지만 내부에서 사용 안 함
     ) -> List[Dict]:
         """
-        패턴 필터링 (v3.0)
-        
-        개선사항:
-        - 정확한 그룹 감지
-        - Drilldown 예외 추가
-        - 원래 로직(percentage 30%) 유지
+        1) 사소한 키워드(TRIVIAL_KEYWORDS) 제거
+        2) 자연어 질의에 이미 포함된 조건(나이/성별/지역/직업/소득 등) 제거
+        3) 나머지는 전부 남김 (lift/percentage 기준으로 걸러내지 않음)
         """
         filtered = []
         
@@ -211,52 +196,37 @@ class RecommendationEngine:
             feature = feature_raw.lower()
             value = pattern.get('value', '')
             insight = pattern.get('insight', '')
+            # percentage는 이후 Top2 정렬에만 사용 (여기선 사용 X)
             percentage = pattern.get('percentage', 0)
-            
-            # 1) 사소한 패턴 제거
+
+            # 1) 사소한 키워드가 포함된 패턴은 제거
             if any(kw in feature or kw in value or kw in insight for kw in self.TRIVIAL_KEYWORDS):
                 logger.debug(f"   ❌ Trivial 제거: {feature_raw}")
                 continue
 
-            # 2) 그룹 감지
-            group = self.detect_feature_group(feature_raw, value)
-            logger.debug(f"   🔎 '{feature_raw}' = '{value}' → group: {group}")
-            
-            # 3) 중복 조건 체크 (Drilldown 예외 포함)
+            # 2) 검색 조건과 중복되는지 확인
             should_exclude = False
             
-            if group and self.is_condition_applied(search_conditions, group, value):
-                # Drilldown인지 확인
-                if self.is_drilldown(search_conditions, feature_raw, value, group):
-                    # Drilldown이면 제외하지 않음
-                    should_exclude = False
-                else:
-                    # 일반 중복이면 제외
+            # 드릴다운 허용이 아닌 경우, 질의에 이미 포함된 그룹은 제외
+            if not self.is_drilldown_allowed(search_conditions, feature):
+                if any(w in feature for w in ['age', '나이', '연령']) and self.is_condition_applied(search_conditions, 'age', value):
+                    should_exclude = True
+                elif any(w in feature for w in ['gender', '성별']) and self.is_condition_applied(search_conditions, 'gender', value):
+                    should_exclude = True
+                elif any(w in feature for w in ['location', '지역', '거주']) and self.is_condition_applied(search_conditions, 'location', value):
+                    should_exclude = True
+                elif any(w in feature for w in ['job', '직업']) and self.is_condition_applied(search_conditions, 'job', value):
+                    should_exclude = True
+                elif any(w in feature for w in ['income', '소득']) and self.is_condition_applied(search_conditions, 'income', value):
                     should_exclude = True
                     logger.info(f"   ⚠️ 중복 조건 제거: {feature_raw} = {value} (group: {group})")
 
             if should_exclude:
                 continue
 
-            # 4) 통계적 유의성 (원래 로직)
-            is_boring_region = any(r in value for r in ['수도권', '서울', '경기'])
-            min_lift_threshold = 2.0 if is_boring_region else 1.3
-            
-            is_significant = False
-            lift = self.calculate_lift(percentage, feature_raw, value, full_statistics)
-            
-            if lift is not None:
-                if lift >= min_lift_threshold:
-                    is_significant = True
-                    logger.info(f"   ✅ 발견 (Lift): {feature_raw}={value} (Lift: {lift:.2f})")
-                else:
-                    logger.debug(f"   ❌ Lift 부족: {feature_raw}={value} (Lift: {lift:.2f} < {min_lift_threshold})")
-            elif percentage >= 30:
-                is_significant = True
-                logger.info(f"   ✅ 발견 (비율): {feature_raw}={value} ({percentage}%)")
-            
-            if is_significant:
-                filtered.append(pattern)
+            # 🔹 더 이상 lift / percentage 기준 필터링은 하지 않고,
+            #     위 조건만 통과하면 모두 남김.
+            filtered.append(pattern)
 
         logger.info(f"📊 필터링 완료: {len(patterns)}개 → {len(filtered)}개")
         return filtered
@@ -266,18 +236,33 @@ class RecommendationEngine:
         filtered_patterns: List[Dict],
         max_count: int = 2
     ) -> List[Dict]:
+        """
+        🔹 남아있는 패턴 중에서
+            - percentage(비율)가 높은 순으로 정렬
+            - Top N(max_count)만 추천으로 사용
+        🔹 lift나 추가적인 점수 계산 없음
+        """
         recommendations = []
         
-        for pattern in filtered_patterns[:max_count]:
+        # 🔸 percentage 기준으로 내림차순 정렬 후 Top N만 사용
+        sorted_patterns = sorted(
+            filtered_patterns,
+            key=lambda p: p.get('percentage', 0),
+            reverse=True
+        )
+
+        for pattern in sorted_patterns[:max_count]:
             feature = pattern.get('feature', '')
             value = pattern.get('value', '')
             insight = pattern.get('insight', '')
             
+            # 🔹 끝 문장 정리: '입니다입니다' 같은 중복 제거
             cleaned_insight = insight.strip()
             cleaned_insight = re.sub(r'(입니다|합니다|습니다)+$', r'\1', cleaned_insight)
             if not cleaned_insight.endswith('.'):
                 cleaned_insight += "."
-
+            
+            # 버튼에 들어갈 queryPart 정리
             query_part = value
             if '(' in query_part:
                 query_part = query_part.split('(')[0].strip()
