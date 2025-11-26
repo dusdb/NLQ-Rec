@@ -451,7 +451,17 @@ async def search_panels(request: SearchRequest):
             ('gender', '성별'),
             ('location', '지역'),
             ('district', '상세지역'),
-            ('job', '직업')
+            ('job', '직업'),
+            ('education', '학력'),
+            ('income_level', '소득'),
+            ('marital_status', '결혼상태'),
+            ('car_brand', '차량'),
+            ('phone_brand', '휴대폰'),
+            ('smoking', '흡연'),
+            ('alcohol', '음주'),
+            ('product', '전자제품'),
+            ('child', '자녀'),
+            ('family', '가족구성'),
         ]:
             if search_conditions.get(key):
                 filter_tags.append({

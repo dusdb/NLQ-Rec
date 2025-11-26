@@ -233,6 +233,159 @@ class TextNormalizer:
         '부부': '기혼',
     }
     
+    # ⭐ 신규 추가: 차량 브랜드 매핑
+    CAR_BRAND_MAPPING = {
+        # 국산
+        '현대': '현대',
+        '제네시스': '제네시스',
+        '기아': '기아',
+        '쌍용': '쌍용',
+        '르노': '르노삼성',
+        '삼성': '르노삼성',
+        '쉐보레': '쉐보레',
+        
+        # 수입차 (럭셔리)
+        '벤츠': '메르세데스-벤츠',
+        '메르세데스': '메르세데스-벤츠',
+        'bmw': 'BMW',
+        '비엠': 'BMW',
+        '아우디': '아우디',
+        '렉서스': '렉서스',
+        '포르쉐': '포르쉐',
+        '페라리': '페라리',
+        '람보르기니': '람보르기니',
+        '벤틀리': '벤틀리',
+        '롤스로이스': '롤스로이스',
+        
+        # 수입차 (일반)
+        '토요타': '토요타',
+        '혼다': '혼다',
+        '닛산': '닛산',
+        '마쓰다': '마쓰다',
+        '폭스바겐': '폭스바겐',
+        '테슬라': '테슬라',
+        '볼보': '볼보',
+        '포드': '포드',
+        '지프': '지프',
+        '랜드로버': '랜드로버',
+    }
+    
+    # ⭐ 신규 추가: 휴대폰 브랜드 매핑
+    PHONE_BRAND_MAPPING = {
+        '아이폰': '아이폰',
+        '애플': '아이폰',
+        'iphone': '아이폰',
+        'apple': '아이폰',
+        
+        '갤럭시': '갤럭시',
+        '삼성': '갤럭시',
+        'samsung': '갤럭시',
+        'galaxy': '갤럭시',
+        
+        'lg': 'LG',
+        '엘지': 'LG',
+        
+        '샤오미': '샤오미',
+        'xiaomi': '샤오미',
+        '홍미': '샤오미',
+        'redmi': '샤오미',
+        
+        '화웨이': '화웨이',
+        'huawei': '화웨이',
+        
+        '오포': 'OPPO',
+        'oppo': 'OPPO',
+        
+        '비보': 'vivo',
+        'vivo': 'vivo',
+    }
+    
+    # ⭐ 신규 추가: 흡연 여부 매핑
+    SMOKING_MAPPING = {
+        '흡연자': '흡연',
+        '흡연': '흡연',
+        '담배': '흡연',
+        '피움': '흡연',
+        '흡연함': '흡연',
+        
+        '비흡연자': '비흡연',
+        '비흡연': '비흡연',
+        '안피움': '비흡연',
+        '담배안피움': '비흡연',
+        '금연': '비흡연',
+    }
+    
+    # ⭐ 신규 추가: 음주 종류 매핑
+    ALCOHOL_MAPPING = {
+        '소주': '소주',
+        '맥주': '맥주',
+        '막걸리': '막걸리',
+        '와인': '와인',
+        '레드와인': '와인',
+        '화이트와인': '와인',
+        '위스키': '양주',
+        '보드카': '양주',
+        '데킬라': '양주',
+        '진': '양주',
+        '사케': '사케',
+        '청주': '청주',
+        '칵테일': '칵테일',
+    }
+    
+    # ⭐ 신규 추가: 전자제품 매핑
+    PRODUCT_MAPPING = {
+        '에어팟': '에어팟',
+        'airpods': '에어팟',
+        '애플워치': '애플워치',
+        'apple watch': '애플워치',
+        '갤럭시워치': '갤럭시워치',
+        '갤럭시버즈': '갤럭시버즈',
+        '아이패드': '아이패드',
+        'ipad': '아이패드',
+        '갤럭시탭': '갤럭시탭',
+        '맥북': '맥북',
+        'macbook': '맥북',
+        '다이슨': '다이슨',
+        'dyson': '다이슨',
+        '로봇청소기': '로봇청소기',
+        '무선청소기': '무선청소기',
+        '스타일러': '스타일러',
+        '공기청정기': '공기청정기',
+        '가습기': '가습기',
+        '제습기': '제습기',
+    }
+    
+    # ⭐ 신규 추가: 자녀 여부 매핑
+    CHILD_MAPPING = {
+        '자녀있음': '있음',
+        '자녀': '있음',
+        '아이있음': '있음',
+        '아이': '있음',
+        '아기': '있음',
+        '육아': '있음',
+        
+        '자녀없음': '없음',
+        '무자녀': '없음',
+        '딩크족': '없음',
+    }
+    
+    # ⭐ 신규 추가: 가족 구성 매핑
+    FAMILY_MAPPING = {
+        '1인가구': '1명',
+        '혼자': '1명',
+        '독거': '1명',
+        '1인': '1명',
+        
+        '2인가구': '2명',
+        '부부': '2명',
+        '커플': '2명',
+        
+        '3인가구': '3명',
+        '4인가구': '4명',
+        '5인가구': '5명 이상',
+        '대가족': '5명 이상',
+    }
+    
     @classmethod
     def extract_age_range(cls, text: str) -> Optional[Tuple[int, int]]:
         """
@@ -335,6 +488,67 @@ class TextNormalizer:
                 return value
         return None
     
+    # ⭐ 신규 추가 함수들
+    
+    @classmethod
+    def normalize_car_brand(cls, text: str) -> Optional[str]:
+        """차량 브랜드 정규화"""
+        text_lower = text.lower().strip()
+        for key, value in cls.CAR_BRAND_MAPPING.items():
+            if key in text_lower:
+                return value
+        return None
+    
+    @classmethod
+    def normalize_phone_brand(cls, text: str) -> Optional[str]:
+        """휴대폰 브랜드 정규화"""
+        text_lower = text.lower().strip()
+        for key, value in cls.PHONE_BRAND_MAPPING.items():
+            if key in text_lower:
+                return value
+        return None
+    
+    @classmethod
+    def normalize_smoking(cls, text: str) -> Optional[str]:
+        """흡연 여부 정규화"""
+        for key, value in cls.SMOKING_MAPPING.items():
+            if key in text:
+                return value
+        return None
+    
+    @classmethod
+    def normalize_alcohol(cls, text: str) -> Optional[str]:
+        """음주 종류 정규화"""
+        for key, value in cls.ALCOHOL_MAPPING.items():
+            if key in text:
+                return value
+        return None
+    
+    @classmethod
+    def normalize_product(cls, text: str) -> Optional[str]:
+        """전자제품 정규화"""
+        text_lower = text.lower().strip()
+        for key, value in cls.PRODUCT_MAPPING.items():
+            if key in text_lower:
+                return value
+        return None
+    
+    @classmethod
+    def normalize_child(cls, text: str) -> Optional[str]:
+        """자녀 여부 정규화"""
+        for key, value in cls.CHILD_MAPPING.items():
+            if key in text:
+                return value
+        return None
+    
+    @classmethod
+    def normalize_family(cls, text: str) -> Optional[str]:
+        """가족 구성 정규화"""
+        for key, value in cls.FAMILY_MAPPING.items():
+            if key in text:
+                return value
+        return None
+    
     @classmethod
     def extract_all_features(cls, text: str) -> Dict[str, any]:
         """
@@ -348,40 +562,63 @@ class TextNormalizer:
         """
         features = {}
         
-        # 나이
+        # 기존 특징
         age_range = cls.extract_age_range(text)
         if age_range:
             features['age_range'] = {'min': age_range[0], 'max': age_range[1]}
         
-        # 성별
         gender = cls.normalize_gender(text)
         if gender:
             features['gender'] = gender
         
-        # 지역
         location = cls.normalize_location(text)
         if location:
             features['location'] = location
         
-        # 직업
         job = cls.normalize_job(text)
         if job:
             features['job'] = job
         
-        # 학력
         education = cls.normalize_education(text)
         if education:
             features['education'] = education
         
-        # 소득
         income = cls.normalize_income(text)
         if income:
             features['income_level'] = income
         
-        # 결혼 여부
         marital = cls.normalize_marital_status(text)
         if marital:
             features['marital_status'] = marital
+        
+        # ⭐ 신규 특징 추가
+        car_brand = cls.normalize_car_brand(text)
+        if car_brand:
+            features['car_brand'] = car_brand
+        
+        phone_brand = cls.normalize_phone_brand(text)
+        if phone_brand:
+            features['phone_brand'] = phone_brand
+        
+        smoking = cls.normalize_smoking(text)
+        if smoking:
+            features['smoking'] = smoking
+        
+        alcohol = cls.normalize_alcohol(text)
+        if alcohol:
+            features['alcohol'] = alcohol
+        
+        product = cls.normalize_product(text)
+        if product:
+            features['product'] = product
+        
+        child = cls.normalize_child(text)
+        if child:
+            features['child'] = child
+        
+        family = cls.normalize_family(text)
+        if family:
+            features['family'] = family
         
         return features
     
