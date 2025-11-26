@@ -732,9 +732,9 @@ function PanelCard({ panel, onDetailClick }) {
             </h4>
             <ul>
                 <li><strong>나이:</strong> {2025 - (panel.birth_year || 2000)}세</li>
-                <li><strong>성별:</strong> {panel.gender || '정보 없음'}</li>
-                <li><strong>지역:</strong> {panel.region_main} {panel.region_sub}</li>
-                <li><strong>직업:</strong> {panel.job_category || '정보 없음'}</li>
+                <li><strong>성별:</strong> {panel.gender || '미기재'}</li>
+                <li><strong>지역:</strong> {panel.region_main ? `${panel.region_main} ${panel.region_sub || ''}` : '미기재'}</li>
+                <li><strong>직업:</strong> {panel.job_category || '미기재'}</li>
             </ul>
         </div>
     );
@@ -771,32 +771,37 @@ const PanelDetail = ({ panel, onClose }) => {
   return (
     <div className="panel-detail-overlay" onClick={onClose}>
       <div className="panel-detail-modal" onClick={(e) => e.stopPropagation()}>
-        <button className="close-button" onClick={onClose}>×</button>
         
         <div className="detail-header">
-          <h2>{panel.panel_id || panel.panel_uuid}</h2>
-          <p className="detail-subtitle">
-            {panel.gender || '성별 미상'}, {2025 - (panel.birth_year || 2000)}세
-          </p>
-          <p className="detail-location">
-            {panel.region_main} {panel.region_sub}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '10px' }}>
+            
+            <div className="profile-avatar">P</div>
+            
+            <div className="header-info">
+               {/* 이름 옆/아래 여백 제거를 위해 margin 조절 */}
+              <h2 style={{ margin: '0 0 5px 0' }}>{panel.panel_id || panel.panel_uuid}</h2>
+              <p className="detail-subtitle" style={{ margin: 0 }}>
+                {panel.gender || '성별 미상'}, {2025 - (panel.birth_year || 2000)}세
+              </p>
+            </div>
+
+          </div>
+          
+          {/* 나머지 정보는 아래에 배치 */}
+          <br></br>
+          <p className="detail-location" style={{ marginTop: '10px' }}>
+            거주지: {panel.region_main ? `${panel.region_main} ${panel.region_sub || ''}` : '거주지 정보 없음'}
           </p>
           <p className="detail-job">
-            {panel.job_category || '직업 정보 없음'}
+            직업: {panel.job_category || '직업 정보 없음'}
           </p>
+          <br></br>
         </div>
 
         {loading ? (
           <div className="loading-spinner">로딩 중...</div>
         ) : (
           <div className="detail-content">
-            <div className="detail-section">
-              <h3>자기소개</h3>
-              <p className="bio-text">
-                {detailData?.bio || '정보 없음'}
-              </p>
-            </div>
-
             <div className="detail-section">
               <h3>상세 정보</h3>
               
@@ -807,7 +812,7 @@ const PanelDetail = ({ panel, onClose }) => {
                     <div className="info-grid">
                       {items.map((item, index) => (
                         <div key={index} className="info-row">
-                          <span className="info-label">{item.label}:</span>
+                          <span className="info-label">{item.label}: </span>
                           <span className="info-value">{item.value}</span>
                         </div>
                       ))}
@@ -823,6 +828,7 @@ const PanelDetail = ({ panel, onClose }) => {
       </div>
     </div>
   );
+  
 };
 
 function Loader() {
