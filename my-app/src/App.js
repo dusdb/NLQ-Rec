@@ -130,7 +130,15 @@ async function handleDownloadDocx(report) {
 
 // React 컴포넌트 정의
 function App() {
+    // 🆕 랜덤 placeholder 예시
+    const placeholderExamples = [
+        "서울 20대 남자 100명",
+        "경기 30~40대 남자 술을 먹은 사람 50명",
+        "서울, 경기 OTT 이용하는 젊은층 30명"
+    ];
+    
     const [query, setQuery] = useState('');
+    const [placeholder, setPlaceholder] = useState(''); // 🆕 추가
     const [isLoading, setIsLoading] = useState(false);
     const [isSearched, setIsSearched] = useState(false);
     
@@ -157,6 +165,12 @@ function App() {
         message: ''
     });
 
+    // 🆕 컴포넌트 마운트 시 랜덤 선택
+    useEffect(() => {
+        const randomIndex = Math.floor(Math.random() * placeholderExamples.length);
+        setPlaceholder(placeholderExamples[randomIndex]);
+    }, []); // 빈 배열 = 최초 1회만 실행
+
     const clearResults = () => {
         setIsSearched(false);
         setFilterTags([]);
@@ -172,6 +186,12 @@ function App() {
             if (queryToSearch === "") clearResults();
             return;
         }
+        
+        // 🆕 검색창이 비어있으면 실제 사용된 쿼리를 input에 표시
+        if (!query && queryToSearch) {
+            setQuery(queryToSearch);
+        }
+        
         setIsLoading(true);
         setIsSearched(true); 
         setProgressData({ step: 0, progress: 0, message: '검색 시작...' });
@@ -389,13 +409,13 @@ function App() {
                         <input
                             type="text"
                             id="search-input"
-                            placeholder="예: 30대 직장인 중 운동에 관심 있는 사람 100명"
+                            placeholder={placeholder}
                             value={query}
                             onChange={(e) => setQuery(e.target.value)}
-                            onKeyUp={(e) => { if (e.key === 'Enter') handleSearch(query); }}
+                            onKeyUp={(e) => { if (e.key === 'Enter') handleSearch(query || placeholder); }}
                             autoComplete="off"
                         />
-                        <button id="search-button" onClick={() => handleSearch(query)}>
+                        <button id="search-button" onClick={() => handleSearch(query || placeholder)}>
                             분석 시작
                         </button>
                     </div>
