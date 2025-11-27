@@ -10,6 +10,7 @@ os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'  # oneDNN 메시지 제거
 
 from typing import List, Dict, Any, Optional
 import logging
+from uuid import UUID  # UUID 타입 체크용
 
 from app.database.connection import DatabaseConnection
 
@@ -53,6 +54,16 @@ class VectorSearchService:
             return False
         return True
 
+    def _convert_uuids_to_str(self, results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        결과 리스트 내의 UUID 객체를 문자열로 변환 (JSON 직렬화 에러 방지)
+        """
+        for row in results:
+            for key, value in row.items():
+                if isinstance(value, UUID):
+                    row[key] = str(value)
+        return results
+
     def semantic_search(
         self,
         query_text: str,
@@ -94,6 +105,10 @@ class VectorSearchService:
             params = (vector_str, vector_str, top_k) if distance_threshold is None else (vector_str, vector_str, vector_str, top_k)
             
             results = DatabaseConnection.execute_query(sql, params)
+            
+            # ✅ UUID -> String 변환
+            results = self._convert_uuids_to_str(results)
+            
             logger.info(f"✅ 벡터 검색 완료: {len(results)}개 결과")
             return results
             
@@ -123,6 +138,10 @@ class VectorSearchService:
         
         try:
             results = DatabaseConnection.execute_query(sql, tuple(panel_uuids))
+            
+            # ✅ UUID -> String 변환
+            results = self._convert_uuids_to_str(results)
+            
             return results
         except Exception as e:
             logger.error(f"❌ 패널 정보 조회 실패: {e}")
@@ -223,6 +242,10 @@ class VectorSearchService:
         try:
             # 단일 쿼리로 실행
             results = DatabaseConnection.execute_query(sql, tuple(params))
+            
+            # ✅ UUID -> String 변환
+            results = self._convert_uuids_to_str(results)
+            
             logger.info(f"✅ 하이브리드 검색(JOIN) 완료: {len(results)}개")
             return results
             
