@@ -260,6 +260,11 @@ function App() {
         console.log(`🔍 기존 결과에서 필터링: "${partToAdd}"`);
         setIsLoading(true);
         
+        // ✅ 가짜 진행률로 자연스럽게 표시
+        setProgressData({ step: 1, progress: 20, message: '조건을 추가하고 있어요...' });
+        setTimeout(() => setProgressData(prev => ({ ...prev, progress: 60 })), 200);
+        setTimeout(() => setProgressData(prev => ({ ...prev, progress: 90 })), 400);
+        
         try {
             const response = await axios.post(`${API_BASE_URL}/api/v1/refine-insights`, {
                 panelUuids: currentFullPanelList.map(p => p.panel_uuid),
@@ -841,63 +846,58 @@ const PanelDetail = ({ panel, onClose }) => {
   if (!panel) return null;
 
   return (
-    <div className="panel-detail-overlay" onClick={onClose}>
-      <div className="panel-detail-modal" onClick={(e) => e.stopPropagation()}>
+    <div className="detail-header">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '10px' }}>
         
-        <div className="detail-header">
-            <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '10px' }}>
-            
-            <div className="profile-avatar">P</div>
-            
-            <div className="header-info">
-               {/* 이름 옆/아래 여백 제거를 위해 margin 조절 */}
-              <h2 style={{ margin: '0 0 5px 0' }}>{panel.panel_id || panel.panel_uuid}</h2>
-              <p className="detail-subtitle" style={{ margin: 0 }}>
-                {panel.gender || '성별 미상'}, {2025 - (panel.birth_year || 2000)}세
-              </p>
-            </div>
-
-          </div>
-          
-          {/* 나머지 정보는 아래에 배치 */}
-          <br></br>
-          <p className="detail-location" style={{ marginTop: '10px' }}>
-            거주지: {panel.region_main ? `${panel.region_main} ${panel.region_sub || ''}` : '거주지 정보 없음'}
+        <div className="profile-avatar">P</div>
+        
+        <div className="header-info">
+           {/* 이름 옆/아래 여백 제거를 위해 margin 조절 */}
+          <h2 style={{ margin: '0 0 5px 0' }}>{panel.panel_id || panel.panel_uuid}</h2>
+          <p className="detail-subtitle" style={{ margin: 0 }}>
+            {panel.gender || '성별 미상'}, {2025 - (panel.birth_year || 2000)}세
           </p>
-          <p className="detail-job">
-            직업: {panel.job_category || '직업 정보 없음'}
-          </p>
-          <br></br>
         </div>
 
-        {loading ? (
-          <div className="loading-spinner">로딩 중...</div>
-        ) : (
-          <div className="detail-content">
-            <div className="detail-section">
-              <h3>상세 정보</h3>
-              
-              {detailData?.grouped_details && Object.keys(detailData.grouped_details).length > 0 ? (
-                Object.entries(detailData.grouped_details).map(([category, items]) => (
-                  <div key={category} className="info-category">
-                    <h4>{category}</h4>
-                    <div className="info-grid">
-                      {items.map((item, index) => (
-                        <div key={index} className="info-row">
-                          <span className="info-label">{item.label}: </span>
-                          <span className="info-value">{item.value}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <p>상세 정보가 없습니다.</p>
-              )}
-            </div>
-          </div>
-        )}
       </div>
+      
+      {/* 나머지 정보는 아래에 배치 */}
+      <br></br>
+      <p className="detail-location" style={{ marginTop: '10px' }}>
+        거주지: {panel.region_main ? `${panel.region_main} ${panel.region_sub || ''}` : '거주지 정보 없음'}
+      </p>
+      <p className="detail-job">
+        직업: {panel.job_category || '직업 정보 없음'}
+      </p>
+      <br></br>
+
+    {loading ? (
+      <div className="loading-spinner">로딩 중...</div>
+    ) : (
+      <div className="detail-content">
+        <div className="detail-section">
+          <h3>상세 정보</h3>
+          
+          {detailData?.grouped_details && Object.keys(detailData.grouped_details).length > 0 ? (
+            Object.entries(detailData.grouped_details).map(([category, items]) => (
+              <div key={category} className="info-category">
+                <h4>{category}</h4>
+                <div className="info-grid">
+                  {items.map((item, index) => (
+                    <div key={index} className="info-row">
+                      <span className="info-label">{item.label}: </span>
+                      <span className="info-value">{item.value}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))
+          ) : (
+            <p>상세 정보가 없습니다.</p>
+          )}
+        </div>
+      </div>
+    )}
     </div>
   );
   
