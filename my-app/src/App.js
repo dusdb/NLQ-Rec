@@ -192,22 +192,6 @@ function App() {
                 console.log('✅ 통계 갱신 완료:', apiResponse.totalCount);
             }, 0);
 
-            // ✅ 자동 로딩: preloadHint가 있으면 백그라운드 생성
-            const preloadStrategy = (apiResponse.strategyCards || []).find(s => s.preloadHint);
-            if (preloadStrategy) {
-                console.log('🔄 전략 사전 생성 시작...');
-                axios.post(`${API_BASE_URL}/api/v1/generate-report`, {
-                    strategyId: preloadStrategy.id,
-                    strategyName: preloadStrategy.strategyName,
-                    coreTarget: preloadStrategy.coreTarget,
-                    originalQuery: queryToSearch
-                }).then(() => {
-                    console.log('✅ 전략 사전 생성 완료 (캐싱됨)');
-                }).catch(err => {
-                    console.log('⚠️ 사전 생성 실패 (무시):', err.message);
-                });
-            }
-
             } catch (error) {
             console.error("API 호출 중 오류 발생:", error);
             clearResults();
@@ -565,24 +549,33 @@ function StrategyDetailModal({ isOpen, onClose, strategy, query }) {
     
     useEffect(() => {
         if (isOpen && strategy) {
-            setReportData(null);
-            setIsLoading(true);
-            
-            axios.post(`${API_BASE_URL}/api/v1/generate-report`, {
-                strategyId: strategy.id,
-                strategyName: strategy.strategyName,
-                coreTarget: strategy.coreTarget,
-                originalQuery: query
-            })
-            .then(response => {
-                setReportData(response.data.report);
-            })
-            .catch(error => {
-                console.error("리포트 로딩 실패:", error);
-            })
-            .finally(() => {
+            // ✅ 이미 리포트가 있으면 즉시 사용
+            if (strategy.report) {
+                console.log('✅ 사전 생성된 리포트 사용 (즉시 표시)');
+                setReportData(strategy.report);
                 setIsLoading(false);
-            });
+            } else {
+                // ⚠️ 리포트가 없으면 생성 (폴백)
+                console.log('⚠️ 리포트 없음 - API 호출');
+                setReportData(null);
+                setIsLoading(true);
+                
+                axios.post(`${API_BASE_URL}/api/v1/generate-report`, {
+                    strategyId: strategy.id,
+                    strategyName: strategy.strategyName,
+                    coreTarget: strategy.coreTarget,
+                    originalQuery: query
+                })
+                .then(response => {
+                    setReportData(response.data.report);
+                })
+                .catch(error => {
+                    console.error("리포트 로딩 실패:", error);
+                })
+                .finally(() => {
+                    setIsLoading(false);
+                });
+            }
         }
     }, [isOpen, strategy, query]);
 
@@ -781,7 +774,17 @@ const PanelDetail = ({ panel, onClose }) => {
 
   React.useEffect(() => {
     const fetchDetail = async () => {
+      // ✅ panel에 이미 grouped_details가 있으면 즉시 사용
+      if (panel?.grouped_details) {
+        console.log('✅ 패널 상세 정보 즉시 표시 (이미 포함됨)');
+        setDetailData(panel);
+        setLoading(false);
+        return;
+      }
+
+      // ⚠️ grouped_details가 없으면 API 호출
       try {
+        console.log('⚠️ 상세 정보 없음 - API 호출');
         setLoading(true);
         const response = await fetch(`http://localhost:8000/api/v1/panel/${panel.panel_uuid}`);
         const result = await response.json();

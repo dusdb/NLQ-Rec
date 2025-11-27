@@ -183,7 +183,7 @@ async def search_panels(request: SearchRequest):
         print(f"Step 4 완료: {len(converted_panels)}명 변환됨")
         
         # ========================================
-        # Step 5, 6, 7: 인사이트 및 추천 생성
+        # Step 5: 통계 계산
         # ========================================
 
         recommendations = []
@@ -191,11 +191,11 @@ async def search_panels(request: SearchRequest):
         insights = {}
         
         try:
-            print("Step 5: Extracting insights (Claude)...")
+            print("Step 5: Calculating statistics...")
             step5_start = time.time()
             
             if converted_panels:
-                print(f"{len(converted_panels)}명의 패널 분석 중...")
+                print(f"{len(converted_panels)}명의 패널 통계 계산 중...")
                 
                 job_stats = {}
                 location_stats = {}
@@ -233,6 +233,27 @@ async def search_panels(request: SearchRequest):
                 print(f"연령대 분포: {age_stats}")
                 print(f"성별 분포: {gender_stats}")
 
+                full_statistics = {
+                    "job_distribution": job_stats,
+                    "location_distribution": location_stats,
+                    "age_distribution": age_stats,
+                    "gender_distribution": gender_stats,
+                    "income_distribution": income_stats,
+                    "car_distribution": car_stats,
+                    "total_count": len(converted_panels)
+                }
+
+                step5_time = round(time.time() - step5_start, 3)
+                time_logs['step5_statistics'] = step5_time
+                print(f"Step 5 소요시간: {step5_time}초")
+
+                # ========================================
+                # Step 6: Claude 상세 패턴 분석 (동기 실행)
+                # ========================================
+
+                print("Step 6: Extracting detailed patterns (Claude - 동기)...")
+                step6_start = time.time()
+
                 top_results_for_insight = []
                 vector_results = [p for p in converted_panels if 'similarity_score' in p]
 
@@ -241,23 +262,20 @@ async def search_panels(request: SearchRequest):
                         vector_results,
                         key=lambda x: x['similarity_score'],
                         reverse=True
-                    )[:10]
+                    )[:50]
                 else:
-                    top_results_for_insight = converted_panels[:10]
+                    top_results_for_insight = converted_panels[:50]
 
                 insight_result = claude_service.extract_insights(
                     panel_data=top_results_for_insight,
                     original_query=request.query,
-                    full_statistics={
-                        "job_distribution": job_stats,
-                        "location_distribution": location_stats,
-                        "age_distribution": age_stats,
-                        "gender_distribution": gender_stats,
-                        "income_distribution": income_stats,
-                        "car_distribution": car_stats,
-                        "total_count": len(converted_panels)
-                    }
+                    full_statistics=full_statistics
                 )
+                
+                step6_time = round(time.time() - step6_start, 3)
+                time_logs['step6_claude_insights'] = step6_time
+                print(f"Step 6 소요시간: {step6_time}초 (Claude 분석 완료)")
+                print(f"Step 6 완료: {insight_result.get('success')}")
             else:
                 print("검색 결과 0명 → 조건 완화 피드백 생성 중...")
                 
@@ -279,28 +297,24 @@ async def search_panels(request: SearchRequest):
                     }
                 }
             
-            step5_time = round(time.time() - step5_start, 3)
-            time_logs['step5_insights'] = step5_time
-            print(f"Step 5 소요시간: {step5_time}초")
-            
             is_insight_success = insight_result.get('success', False)
-            print(f"Step 5 완료: {is_insight_success}")
+            print(f"Step 6 완료: {is_insight_success}")
             
             if is_insight_success:
                 insights = insight_result.get('data', {})
                 
                 # ========================================
-                # Step 6: 임베딩 평균 기반 추천 생성 (NEW)
+                # Step 7: 임베딩 평균 기반 추천 생성
                 # ========================================
 
-                print("Step 6: Creating recommendations (embedding-based)...")
-                step6_start = time.time()
+                print("Step 7: Creating recommendations (embedding-based)...")
+                step7_start = time.time()
 
                 if converted_panels:
                     # 임베딩 기반 엔진 import
                     from app.services.embedding_insight import embedding_insight_engine
                     
-                    # 패널 UUID 리스트 추출
+                    # 패널 UUID 리스트 추출 (전체 분석)
                     panel_uuids = [p['panel_uuid'] for p in converted_panels if p.get('panel_uuid')]
                     
                     print(f"📊 임베딩 분석 대상: {len(panel_uuids)}명")
@@ -362,48 +376,103 @@ async def search_panels(request: SearchRequest):
                     
                     recommendations = suggestions[:2]
 
-                step6_time = round(time.time() - step6_start, 3)
-                time_logs['step6_recommendations'] = step6_time
-                print(f"Step 6 소요시간: {step6_time}초")
+                step7_time = round(time.time() - step7_start, 3)
+                time_logs['step7_recommendations'] = step7_time
+                print(f"Step 7 소요시간: {step7_time}초")
 
                 # ========================================
-                # Step 7: strategyCards 생성
+                # Step 8: 전략 리포트 생성 (동기)
                 # ========================================
 
-                print("Step 7: Creating strategy card metadata...")
-                step7_start = time.time()
+                print("Step 8: Generating full strategy report (동기)...")
+                step8_start = time.time()
                 
-                # strategy_type_map = {
-                #     # "rdb": "RDB 분석",
-                #     # "vector": "벡터 유사도 분석",
-                #     # "hybrid": "하이브리드 분석 (RDB + Vector)"
-                # }
-                
-                target_profile = insights.get('target_profile', {})
-                core_demo = target_profile.get('core_demographic', '타겟 그룹')
-                key_chars = target_profile.get('key_characteristics', [])
+                strategy_report = None
                 
                 if converted_panels:
-                    strategy_name = generate_concise_strategy_name(
+                    print(f"   {len(converted_panels)}명 기반 리포트 생성 중...")
+                    
+                    # Claude로 전략 리포트 생성
+                    strategy_report_result = claude_service.generate_strategy_report(
+                        insights=insights,
                         original_query=request.query,
-                        core_demo=core_demo,
-                        key_chars=key_chars
+                        panel_count=len(converted_panels)
                     )
                     
-                    strategy_cards.append({
-                        "id": "strategy-001",
-                        "strategyName": strategy_name,
-                        "coreTarget": ", ".join(key_chars[:3]) if key_chars else core_demo,
-                        "strategyType": "",
+                    if strategy_report_result.get('success'):
+                        strategy_report = strategy_report_result.get('data', {})
+                        print(f"   ✅ 리포트 생성 완료")
+                        
+                        # 리포트에서 실제 데이터 추출
+                        project_name = strategy_report.get('projectName', '타겟 전략')
+                        project_subtitle = strategy_report.get('projectSubtitle', '')
+                        
+                        # summaryTable에서 타겟 정보 추출
+                        core_target = ""
+                        summary_table = strategy_report.get('summaryTable', [])
+                        for row in summary_table:
+                            if row.get('th') == '타겟 고객':
+                                core_target = row.get('td', '')
+                                break
+                        
+                        if not core_target:
+                            target_profile = insights.get('target_profile', {})
+                            key_chars = target_profile.get('key_characteristics', [])
+                            core_target = ", ".join(key_chars[:3]) if key_chars else "타겟 그룹"
+                        
+                        # 키워드 추출 (insightTable 또는 hidden_patterns에서)
+                        keywords_list = []
+                        insight_table = strategy_report.get('insightTable', {})
+                        if insight_table and insight_table.get('rows'):
+                            for row in insight_table['rows'][:3]:
+                                if len(row) > 0:
+                                    keywords_list.append(row[0])
+                        
+                        if not keywords_list:
+                            keywords_list = [
+                                p.get('feature', '') 
+                                for p in insights.get('hidden_patterns', [])[:3]
+                            ]
+                        
+                        keywords = ", ".join(keywords_list) if keywords_list else "분석 진행 중"
+                        
+                        strategy_cards.append({
+                            "id": "strategy-001",
+                            "strategyName": project_name,
+                            "projectSubtitle": project_subtitle,
+                            "coreTarget": core_target,
+                            "keywords": keywords,
+                            "strategyType": "",
+                            "preloadHint": True,
+                            "report": strategy_report  # 전체 리포트 포함
+                        })
+                        
+                        print(f"   전략 카드 생성 완료: {project_name}")
+                    else:
+                        print(f"   ⚠️ 리포트 생성 실패, 기본 카드 생성")
+                        
+                        target_profile = insights.get('target_profile', {})
+                        core_demo = target_profile.get('core_demographic', '타겟 그룹')
+                        key_chars = target_profile.get('key_characteristics', [])
+                        
+                        strategy_name = generate_concise_strategy_name(
+                            original_query=request.query,
+                            core_demo=core_demo,
+                            key_chars=key_chars
+                        )
+                        
+                        strategy_cards.append({
+                            "id": "strategy-001",
+                            "strategyName": strategy_name,
+                            "coreTarget": ", ".join(key_chars[:3]) if key_chars else core_demo,
+                            "keywords": ", ".join([
+                                p.get('feature', '') 
+                                for p in insights.get('hidden_patterns', [])[:3]
+                            ]),
+                            "strategyType": "",
+                            "preloadHint": True
+                        })
 
-                        "keywords": ", ".join([
-                            p.get('feature', '') 
-                            for p in insights.get('hidden_patterns', [])[:3]
-                        ]),
-                        "preloadHint": True
-                    })
-
-                    print(f"   전략 카드 생성 완료")
                 else:
                     strategy_cards.append({
                         "id": "strategy-no-result",
@@ -414,11 +483,11 @@ async def search_panels(request: SearchRequest):
                     })
                     print(f"   피드백 카드 생성 완료")
                 
-                step7_time = round(time.time() - step7_start, 3)
-                time_logs['step7_card_metadata'] = step7_time
-                print(f"Step 7 완료: {len(strategy_cards)}개 전략 카드 생성")
+                step8_time = round(time.time() - step8_start, 3)
+                time_logs['step8_report_generation'] = step8_time
+                print(f"Step 8 완료: {len(strategy_cards)}개 전략 카드 생성 ({step8_time}초)")
             else:
-                print("Step 5 실패: 인사이트 데이터 없음")
+                print("Step 6 실패: 인사이트 데이터 없음")
         
         except Exception as e:
             print(f"AI Insight generation error: {e}")
@@ -433,9 +502,9 @@ async def search_panels(request: SearchRequest):
             })
         
         # ========================================
-        # Step 8: filterTags 생성
+        # Step 9: filterTags 생성
         # ========================================
-        step8_start = time.time()
+        step9_start = time.time()
         filter_tags = []
         
         age_range = search_conditions.get('age_range')
@@ -470,8 +539,8 @@ async def search_panels(request: SearchRequest):
                     "queryPart": search_conditions[key]
                 })
         
-        step8_time = round(time.time() - step8_start, 3)
-        time_logs['step8_filters'] = step8_time
+        step9_time = round(time.time() - step9_start, 3)
+        time_logs['step9_filters'] = step9_time
         
         sample_panels = converted_panels[:3]
         
