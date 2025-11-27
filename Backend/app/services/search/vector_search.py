@@ -146,7 +146,11 @@ class VectorSearchService:
         SELECT 
             panel_uuid, panel_id, birth_year, gender,
             region_main, region_sub, job_category, job_detail,
-            education, marital_status
+            education, marital_status, child_num, family_num,
+            personal_income, household_income,
+            car_brand, car_model, has_car,
+            owned_phone_brand, owned_phone_model,
+            smoking_exp
         FROM panel_master
         WHERE panel_uuid IN ({placeholders});
         """
@@ -210,7 +214,11 @@ class VectorSearchService:
             (1 - (vi.embedding <=> %s::vector)) as similarity,
             pm.panel_id, pm.birth_year, pm.gender,
             pm.region_main, pm.region_sub, pm.job_category, pm.job_detail,
-            pm.education, pm.marital_status
+            pm.education, pm.marital_status, pm.child_num, pm.family_num,
+            pm.personal_income, pm.household_income,
+            pm.car_brand, pm.car_model, pm.has_car,
+            pm.owned_phone_brand, pm.owned_phone_model,
+            pm.smoking_exp
         FROM vector_index vi
         INNER JOIN panel_master pm ON vi.panel_uuid = pm.panel_uuid
         WHERE vi.embedding IS NOT NULL 
