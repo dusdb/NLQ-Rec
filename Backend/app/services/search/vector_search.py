@@ -176,6 +176,7 @@ class VectorSearchService:
         FROM vector_index vi
         INNER JOIN panel_master pm ON vi.panel_uuid = pm.panel_uuid
         WHERE vi.embedding IS NOT NULL 
+            AND pm.birth_year IS NOT NULL   
         """
         
         params = [vector_str, vector_str]
