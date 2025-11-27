@@ -1,12 +1,14 @@
 # app/api/v1/search.py
 
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 import time
 from datetime import datetime
 import json
 import traceback
+import asyncio
 
 from app.utils.database import execute_fetch_query
 from app.services.claude import claude_service
@@ -36,6 +38,280 @@ class ReportRequest(BaseModel):
     strategyName: Optional[str] = None
     coreTarget: Optional[str] = None
     originalQuery: Optional[str] = None
+
+
+def emit_progress(step: int, progress: int, message: str, data: dict = None):
+    """SSE 이벤트 생성 헬퍼"""
+    event_data = {
+        'step': step,
+        'progress': progress,
+        'message': message
+    }
+    if data:
+        event_data.update(data)
+    return f"data: {json.dumps(event_data, ensure_ascii=False)}\n\n"
+
+
+@router.get("/search-stream")
+async def search_panels_stream(query: str, search_mode: str = "hybrid", top_k: int = 100):
+    """
+    SSE 스트리밍 방식 검색
+    실시간 진행 상황을 프론트엔드로 전송
+    """
+    async def event_generator():
+        try:
+            start_time = time.time()
+            
+            # Step 1: 쿼리 분석
+            yield emit_progress(1, 10, '검색 조건을 확인하고 있어요...')
+            await asyncio.sleep(0.1)
+            
+            analysis_result = claude_service.analyze_query(query)
+            if not analysis_result.get('success'):
+                yield emit_progress(0, 0, '검색 조건 확인 실패', {'error': analysis_result.get('error')})
+                return
+            
+            conditions_json = analysis_result.get('data', {})
+            search_conditions = conditions_json.get('search_conditions', {})
+            extracted_count = conditions_json.get('target_count')
+            target_count = extracted_count if extracted_count else top_k
+            
+            # Step 2: SQL 생성
+            yield emit_progress(2, 20, '데이터베이스 검색을 준비하고 있어요...')
+            await asyncio.sleep(0.1)
+            
+            sql_generation_result = claude_service.generate_sql(
+                analyzed_query=conditions_json,
+                target_count=target_count
+            )
+            sql_query = sql_generation_result.get('sql_query')
+            
+            # Step 3: 검색 모드 결정 및 실행
+            yield emit_progress(3, 30, '패널을 찾고 있어요...')
+            await asyncio.sleep(0.1)
+            
+            actual_mode = search_mode
+            if search_mode == "hybrid":
+                needs_vector = should_use_vector_search(query, search_conditions)
+                actual_mode = "rdb" if not needs_vector else "hybrid"
+            
+            if actual_mode == "rdb":
+                if not sql_query:
+                    raise ValueError("SQL generation failed")
+                filtered_panels = await execute_fetch_query(sql_query)
+            elif actual_mode == "vector":
+                filtered_panels = search_agent.semantic_search(query, target_count)
+            elif actual_mode == "hybrid":
+                filtered_panels = search_agent.hybrid_search(query, search_conditions, target_count)
+            
+            # Fallback
+            if not filtered_panels and actual_mode in ["rdb", "hybrid"]:
+                filtered_panels = search_agent.semantic_search(query, top_k=target_count)
+            
+            # Step 4: 데이터 변환
+            yield emit_progress(4, 45, '패널 정보를 정리하고 있어요...')
+            await asyncio.sleep(0.1)
+            
+            converted_panels = [
+                convert_panel_to_frontend_format(panel) 
+                for panel in filtered_panels
+            ]
+            
+            # Step 5: 통계 계산
+            yield emit_progress(5, 55, '패널 특성을 분석하고 있어요...')
+            await asyncio.sleep(0.1)
+            
+            job_stats = {}
+            location_stats = {}
+            age_stats = {}
+            gender_stats = {}
+            income_stats = {}
+            car_stats = {}
+            
+            for p in converted_panels:
+                job = p.get('job_category', '미상')
+                job_stats[job] = job_stats.get(job, 0) + 1
+                location = p.get('region_main', '미상')
+                location_stats[location] = location_stats.get(location, 0) + 1
+                birth_year = p.get('birth_year')
+                if birth_year:
+                    age = 2025 - birth_year
+                    age_group = f"{(age // 10) * 10}대"
+                    age_stats[age_group] = age_stats.get(age_group, 0) + 1
+                gender = p.get('gender', '미상')
+                gender_stats[gender] = gender_stats.get(gender, 0) + 1
+                income = p.get('personal_income', '미상')
+                if income and income != '미상':
+                    income_stats[income] = income_stats.get(income, 0) + 1
+                car = p.get('car_brand', '미상')
+                if car and car != '미상':
+                    car_stats[car] = car_stats.get(car, 0) + 1
+            
+            full_statistics = {
+                "job_distribution": job_stats,
+                "location_distribution": location_stats,
+                "age_distribution": age_stats,
+                "gender_distribution": gender_stats,
+                "income_distribution": income_stats,
+                "car_distribution": car_stats,
+                "total_count": len(converted_panels)
+            }
+            
+            # Step 6: Claude 상세 패턴 분석
+            yield emit_progress(6, 65, 'AI가 패턴을 찾고 있어요...')
+            
+            if converted_panels:
+                top_results_for_insight = []
+                vector_results = [p for p in converted_panels if 'similarity_score' in p]
+                if vector_results:
+                    top_results_for_insight = sorted(
+                        vector_results,
+                        key=lambda x: x['similarity_score'],
+                        reverse=True
+                    )[:50]
+                else:
+                    top_results_for_insight = converted_panels[:50]
+                
+                insight_result = claude_service.extract_insights(
+                    panel_data=top_results_for_insight,
+                    original_query=query,
+                    full_statistics=full_statistics
+                )
+            else:
+                insight_result = {"success": True, "data": {"hidden_patterns": []}}
+            
+            insights = insight_result.get('data', {})
+            
+            # Step 7: 임베딩 추천 생성
+            yield emit_progress(7, 80, '추가 조건을 추천하고 있어요...')
+            
+            recommendations = []
+            if converted_panels:
+                from app.services.embedding_insight import embedding_insight_engine
+                panel_uuids = [p['panel_uuid'] for p in converted_panels if p.get('panel_uuid')]
+                
+                embedding_insights = await embedding_insight_engine.extract_insights_by_embedding(
+                    panel_uuids=panel_uuids,
+                    search_conditions=search_conditions,
+                    top_k=2
+                )
+                
+                for i, insight in enumerate(embedding_insights):
+                    keyword = insight['value']
+                    recommendations.append({
+                        "id": f"rec-embedding-{i+1}",
+                        "text": insight['insight'],
+                        "action": {
+                            "buttonText": f"+ '{keyword}' 추가",
+                            "data": {
+                                "type": "embedding_insight",
+                                "value": keyword,
+                                "queryPart": keyword,
+                                "similarity": insight['similarity']
+                            }
+                        }
+                    })
+            
+            # Step 8: 전략 리포트 생성
+            yield emit_progress(8, 90, 'AI가 전략 제안서를 작성하고 있어요...')
+            
+            strategy_cards = []
+            if converted_panels:
+                strategy_report_result = claude_service.generate_strategy_report(
+                    insights=insights,
+                    original_query=query,
+                    panel_count=len(converted_panels)
+                )
+                
+                if strategy_report_result.get('success'):
+                    strategy_report = strategy_report_result.get('data', {})
+                    project_name = strategy_report.get('projectName', '타겟 전략')
+                    project_subtitle = strategy_report.get('projectSubtitle', '')
+                    
+                    core_target = ""
+                    summary_table = strategy_report.get('summaryTable', [])
+                    for row in summary_table:
+                        if row.get('th') == '타겟 고객':
+                            core_target = row.get('td', '')
+                            break
+                    
+                    if not core_target:
+                        target_profile = insights.get('target_profile', {})
+                        key_chars = target_profile.get('key_characteristics', [])
+                        core_target = ", ".join(key_chars[:3]) if key_chars else "타겟 그룹"
+                    
+                    keywords_list = []
+                    insight_table = strategy_report.get('insightTable', {})
+                    if insight_table and insight_table.get('rows'):
+                        for row in insight_table['rows'][:3]:
+                            if len(row) > 0:
+                                keywords_list.append(row[0])
+                    
+                    keywords = ", ".join(keywords_list) if keywords_list else "분석 진행 중"
+                    
+                    strategy_cards.append({
+                        "id": "strategy-001",
+                        "strategyName": project_name,
+                        "projectSubtitle": project_subtitle,
+                        "coreTarget": core_target,
+                        "keywords": keywords,
+                        "strategyType": "",
+                        "preloadHint": True,
+                        "report": strategy_report
+                    })
+            
+            # filterTags 생성
+            filter_tags = []
+            age_range = search_conditions.get('age_range')
+            if age_range and age_range.get('min'):
+                decade = (age_range['min'] // 10) * 10
+                filter_tags.append({
+                    "label": "나이",
+                    "value": f"{age_range.get('min')}-{age_range.get('max', age_range['min'])}세",
+                    "queryPart": f"{decade}대"
+                })
+            
+            for key, label in [
+                ('gender', '성별'), ('location', '지역'), ('district', '상세지역'),
+                ('job', '직업'), ('education', '학력'), ('income_level', '소득'),
+                ('marital_status', '결혼상태'), ('car_brand', '차량'),
+                ('phone_brand', '휴대폰'), ('smoking', '흡연')
+            ]:
+                if search_conditions.get(key):
+                    filter_tags.append({
+                        "label": label,
+                        "value": search_conditions[key],
+                        "queryPart": search_conditions[key]
+                    })
+            
+            # Step 9: 완료
+            total_time = round(time.time() - start_time, 2)
+            
+            result_data = {
+                "totalCount": len(converted_panels),
+                "filterTags": filter_tags,
+                "samplePanels": converted_panels[:3],
+                "currentFullPanelList": converted_panels,
+                "recommendations": recommendations,
+                "strategyCards": strategy_cards,
+                "control": {
+                    "status": "success",
+                    "searchQuery": query,
+                    "searchMode": search_mode,
+                    "actualMode": actual_mode,
+                    "total_response_time_seconds": total_time
+                }
+            }
+            
+            yield emit_progress(9, 100, '완료!', {'result': result_data})
+            
+        except Exception as e:
+            error_detail = traceback.format_exc()
+            print(f"\nSSE Search Error:\n{error_detail}\n")
+            yield emit_progress(0, 0, f'오류 발생: {str(e)}', {'error': str(e)})
+    
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
+
 
 @router.post("/search")
 async def search_panels(request: SearchRequest):

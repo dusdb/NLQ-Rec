@@ -150,6 +150,13 @@ function App() {
     const [isAllPanelsViewVisible, setIsAllPanelsViewVisible] = useState(false);
     const [isAllPanelsExiting, setIsAllPanelsExiting] = useState(false);
 
+    // 🆕 프로그레스 바 상태
+    const [progressData, setProgressData] = useState({
+        step: 0,
+        progress: 0,
+        message: ''
+    });
+
     const clearResults = () => {
         setIsSearched(false);
         setFilterTags([]);
@@ -167,38 +174,59 @@ function App() {
         }
         setIsLoading(true);
         setIsSearched(true); 
+        setProgressData({ step: 0, progress: 0, message: '검색 시작...' });
         console.log(`[프론트] 백엔드로 전송할 쿼리: "${queryToSearch}"`);
 
-        try {
-            const response = await axios.post(`${API_BASE_URL}/api/v1/search`, {
-                query: queryToSearch 
+        const eventSource = new EventSource(
+            `${API_BASE_URL}/api/v1/search-stream?query=${encodeURIComponent(queryToSearch)}`
+        );
+
+        eventSource.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            
+            console.log('📡 SSE 이벤트:', data);
+            
+            if (data.error) {
+                console.error('❌ Error:', data.error);
+                alert(`검색 오류: ${data.error}`);
+                eventSource.close();
+                setIsLoading(false);
+                clearResults();
+                return;
+            }
+
+            // 진행 상황 업데이트
+            setProgressData({
+                step: data.step,
+                progress: data.progress,
+                message: data.message
             });
 
-            const apiResponse = response.data;
+            // 완료 시 (Step 9)
+            if (data.step === 9 && data.result) {
+                console.log('✅ 검색 완료:', data.result);
+                
+                const apiResponse = data.result;
+                
+                setTotalCount(apiResponse.totalCount);
+                setFilterTags(apiResponse.filterTags || []);
+                setSamplePanels(apiResponse.samplePanels);
+                setCurrentFullPanelList(apiResponse.currentFullPanelList);
+                setRecommendations(apiResponse.recommendations);
+                setStrategyCards(apiResponse.strategyCards || []);
+                
+                eventSource.close();
+                setIsLoading(false);
+            }
+        };
 
-            console.log('🔍 백엔드 전체 응답:', JSON.stringify(apiResponse, null, 2));
-            console.log('🔍 samplePanels 첫번째:', apiResponse.samplePanels[0]);
-            
-            // ✅ 즉시 갱신 (React 배치 업데이트 방지)
-            setTotalCount(apiResponse.totalCount);
-            setFilterTags(apiResponse.filterTags || []);
-            setSamplePanels(apiResponse.samplePanels);
-            setCurrentFullPanelList(apiResponse.currentFullPanelList);
-            setRecommendations(apiResponse.recommendations);
-            setStrategyCards(apiResponse.strategyCards || []);
-            
-            // 강제 리렌더링 트리거
-            setTimeout(() => {
-                console.log('✅ 통계 갱신 완료:', apiResponse.totalCount);
-            }, 0);
-
-            } catch (error) {
-            console.error("API 호출 중 오류 발생:", error);
-            clearResults();
-        
-        } finally {
+        eventSource.onerror = (error) => {
+            console.error('❌ SSE Error:', error);
+            eventSource.close();
             setIsLoading(false);
-        }
+            alert('검색 중 오류가 발생했습니다. 다시 시도해주세요.');
+            clearResults();
+        };
     };
     
     const handleRecommendationClick = async (rec) => {
@@ -367,7 +395,13 @@ function App() {
                     </div>
                 </section>
 
-                {isLoading && <Loader />}
+                {isLoading && (
+                    <SearchProgressBar 
+                        currentStep={progressData.step}
+                        percentage={progressData.progress}
+                        message={progressData.message}
+                    />
+                )}
 
                 {isSearched && !isLoading && totalCount > 0 && (
                     <div id="results-wrapper" className="visible">
@@ -869,8 +903,42 @@ const PanelDetail = ({ panel, onClose }) => {
   
 };
 
+function SearchProgressBar({ currentStep, percentage, message }) {
+    return (
+        <div className="search-progress-overlay">
+            <div className="progress-card">
+                <h3 className="progress-title">AI 분석 진행 중</h3>
+                
+                {/* 🆕 스피너 추가 */}
+                <div className="progress-spinner"></div>
+                
+                <p className="progress-step-text">{message}</p>
+                
+                <div className="progress-bar-track">
+                    <div 
+                        className="progress-bar-fill" 
+                        style={{ width: `${percentage}%` }}
+                    />
+                </div>
+                
+                <div className="progress-percentage">{percentage}%</div>
+            </div>
+        </div>
+    );
+}
+
 function Loader() {
-    return <div id="loader" style={{ display: 'block' }}></div>;
+    return (
+        <div style={{
+            margin: '0 auto',
+            border: '5px solid #f3f3f3',
+            borderTop: '5px solid #14213D',
+            borderRadius: '50%',
+            width: '40px',
+            height: '40px',
+            animation: 'spin 1s linear infinite'
+        }} />
+    );
 }
 
 export default App;
