@@ -1,7 +1,7 @@
 # Backend/app/services/vector_service.py
 
 """
-pgvector 기반 유사도 검색 서비스 (Refactored: JOIN Optimization)
+pgvector 기반 유사도 검색 서비스 (Refactored: JOIN Optimization + Deduplication)
 """
 
 import os
@@ -72,6 +72,7 @@ class VectorSearchService:
     ) -> List[Dict[str, Any]]:
         """
         의미 기반 유사도 검색 (SQL 필터 없음)
+        ✅ panel_uuid 기준 중복 제거: 동일 패널의 여러 응답 중 최고 similarity만 반환
         """
         # 1. 질의 텍스트를 벡터로 변환
         query_vector = self.get_embedding(query_text)
@@ -80,7 +81,9 @@ class VectorSearchService:
             logger.error("❌ 임베딩 차원 오류로 검색 실패")
             return []
         
-        # 2. pgvector cosine distance 검색
+        # 2. pgvector cosine distance 검색 (중복 허용, 더 많이 가져옴)
+        fetch_limit = top_k * 3  # 중복 제거 후에도 충분한 결과 확보
+        
         sql = """
         SELECT 
             vi.vector_uuid,
@@ -102,15 +105,27 @@ class VectorSearchService:
         vector_str = "[" + ",".join(map(str, query_vector)) + "]"
         
         try:
-            params = (vector_str, vector_str, top_k) if distance_threshold is None else (vector_str, vector_str, vector_str, top_k)
+            params = (vector_str, vector_str, fetch_limit) if distance_threshold is None else (vector_str, vector_str, vector_str, fetch_limit)
             
             results = DatabaseConnection.execute_query(sql, params)
             
             # ✅ UUID -> String 변환
             results = self._convert_uuids_to_str(results)
             
-            logger.info(f"✅ 벡터 검색 완료: {len(results)}개 결과")
-            return results
+            # ✅ 중복 제거: panel_uuid 기준으로 최고 similarity만 유지
+            seen_panels = {}
+            for result in results:
+                panel_uuid = result['panel_uuid']
+                similarity = result['similarity']
+                
+                if panel_uuid not in seen_panels or similarity > seen_panels[panel_uuid]['similarity']:
+                    seen_panels[panel_uuid] = result
+            
+            # 중복 제거 후 similarity 순 정렬 + top_k개만 반환
+            deduplicated = sorted(seen_panels.values(), key=lambda x: x['similarity'], reverse=True)[:top_k]
+            
+            logger.info(f"✅ 벡터 검색 완료: {len(results)}개 → 중복 제거 후 {len(deduplicated)}개")
+            return deduplicated
             
         except Exception as e:
             logger.error(f"❌ 벡터 검색 실패: {e}")
@@ -155,6 +170,7 @@ class VectorSearchService:
     ) -> List[Dict[str, Any]]:
         """
         하이브리드 검색: SQL JOIN을 통한 필터링 + 벡터 검색
+        ✅ panel_uuid 기준 중복 제거 포함
         
         [Refactoring Note]
         기존: SQL 필터링 -> Python List(UUID) -> SQL IN절 (메모리 비효율)
@@ -176,9 +192,12 @@ class VectorSearchService:
                 return combined
             return []
 
-        # 2. 하이브리드 검색 (JOIN 방식)
+        # 2. 하이브리드 검색 (JOIN 방식 + 중복 제거)
         query_vector = self.get_embedding(query_text)
         vector_str = "[" + ",".join(map(str, query_vector)) + "]"
+        
+        # 중복 제거를 위해 더 많이 가져옴
+        fetch_limit = top_k * 3
         
         # 기본 쿼리: vector_index와 panel_master를 조인
         sql = """
@@ -237,7 +256,7 @@ class VectorSearchService:
         
         # 4. 정렬 및 제한
         sql += " ORDER BY distance ASC LIMIT %s;"
-        params.append(top_k)
+        params.append(fetch_limit)
         
         try:
             # 단일 쿼리로 실행
@@ -246,8 +265,20 @@ class VectorSearchService:
             # ✅ UUID -> String 변환
             results = self._convert_uuids_to_str(results)
             
-            logger.info(f"✅ 하이브리드 검색(JOIN) 완료: {len(results)}개")
-            return results
+            # ✅ 중복 제거: panel_uuid 기준으로 최고 similarity만 유지
+            seen_panels = {}
+            for result in results:
+                panel_uuid = result['panel_uuid']
+                similarity = result['similarity']
+                
+                if panel_uuid not in seen_panels or similarity > seen_panels[panel_uuid]['similarity']:
+                    seen_panels[panel_uuid] = result
+            
+            # 중복 제거 후 similarity 순 정렬 + top_k개만 반환
+            deduplicated = sorted(seen_panels.values(), key=lambda x: x['similarity'], reverse=True)[:top_k]
+            
+            logger.info(f"✅ 하이브리드 검색(JOIN) 완료: {len(results)}개 → 중복 제거 후 {len(deduplicated)}개")
+            return deduplicated
             
         except Exception as e:
             logger.error(f"❌ 하이브리드 검색 실패: {e}")
