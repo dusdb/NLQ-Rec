@@ -812,7 +812,7 @@ function PanelCard({ panel, onDetailClick }) {
     );
 }
 
-const PanelDetail = ({ panel, onClose }) => {
+const PanelDetail = ({ panel }) => {
   const [detailData, setDetailData] = React.useState(null);
   const [loading, setLoading] = React.useState(true);
 
@@ -848,64 +848,55 @@ const PanelDetail = ({ panel, onClose }) => {
     }
   }, [panel]);
 
-  if (!panel) return null;
+  if (!panel) {
+    return <div className="placeholder-text">패널을 선택하세요</div>;
+  }
 
   return (
-    <div className="detail-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '10px' }}>
-        
+    <>
+      {/* 프로필 섹션 */}
+      <div className="profile-section">
         <div className="profile-avatar">P</div>
-        
-        <div className="header-info">
-           {/* 이름 옆/아래 여백 제거를 위해 margin 조절 */}
-          <h2 style={{ margin: '0 0 5px 0' }}>{panel.panel_id || panel.panel_uuid}</h2>
-          <p className="detail-subtitle" style={{ margin: 0 }}>
-            {panel.gender || '성별 미상'}, {2025 - (panel.birth_year || 2000)}세
-          </p>
-        </div>
-
-      </div>
-      
-      {/* 나머지 정보는 아래에 배치 */}
-      <br></br>
-      <p className="detail-location" style={{ marginTop: '10px' }}>
-        거주지: {panel.region_main ? `${panel.region_main} ${panel.region_sub || ''}` : '거주지 정보 없음'}
-      </p>
-      <p className="detail-job">
-        직업: {panel.job_category || '직업 정보 없음'}
-      </p>
-      <br></br>
-
-    {loading ? (
-      <div className="loading-spinner">로딩 중...</div>
-    ) : (
-      <div className="detail-content">
-        <div className="detail-section">
-          <h3>상세 정보</h3>
-          
-          {detailData?.grouped_details && Object.keys(detailData.grouped_details).length > 0 ? (
-            Object.entries(detailData.grouped_details).map(([category, items]) => (
-              <div key={category} className="info-category">
-                <h4>{category}</h4>
-                <div className="info-grid">
-                  {items.map((item, index) => (
-                    <div key={index} className="info-row">
-                      <span className="info-label">{item.label}: </span>
-                      <span className="info-value">{item.value}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))
-          ) : (
-            <p>상세 정보가 없습니다.</p>
-          )}
+        <div className="profile-summary">
+          <p className="name">{panel.panel_id || panel.panel_uuid}</p>
+          <p>{panel.gender || '성별 미상'}, {2025 - (panel.birth_year || 2000)}세</p>
+          <p>거주지: {panel.region_main ? `${panel.region_main} ${panel.region_sub || ''}` : '거주지 정보 없음'}</p>
+          <p>직업: {panel.job_category || '직업 정보 없음'}</p>
         </div>
       </div>
-    )}
-    </div>
+
+      {/* 상세 정보 */}
+      <div className="profile-details">
+        <h4>상세 정보</h4>
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: '2rem' }}>로딩 중...</div>
+        ) : detailData?.grouped_details && Object.keys(detailData.grouped_details).length > 0 ? (
+          Object.entries(detailData.grouped_details).map(([category, items]) => (
+            <div key={category} style={{ marginBottom: '1.5rem' }}>
+              <h5 style={{ 
+                fontSize: '1rem', 
+                color: 'var(--primary-color)', 
+                marginBottom: '0.75rem',
+                borderBottom: '1px solid var(--border-color)',
+                paddingBottom: '0.5rem'
+              }}>
+                {category}
+              </h5>
+              <ul>
+                {items.map((item, index) => (
+                  <li key={index}>
+                    <strong>{item.label}:</strong> {item.value}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))
+        ) : (
+          <p style={{ color: 'var(--subtle-text-color)' }}>상세 정보가 없습니다.</p>
+        )}
+      </div>
+    </>
   );
-  
 };
 
 function SearchProgressBar({ currentStep, percentage, message }) {
