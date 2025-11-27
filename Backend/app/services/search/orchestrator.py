@@ -233,8 +233,11 @@ class SearchAgent:
             SELECT 
                 panel_id, panel_uuid, birth_year, gender, 
                 region_main, region_sub, job_category, job_detail, 
-                personal_income,
-                owned_phone_brand, car_brand, smoking_exp
+                education, marital_status, child_num, family_num,
+                personal_income, household_income,
+                car_brand, car_model, has_car,
+                owned_phone_brand, owned_phone_model, 
+                smoking_exp
             FROM panel_master
             WHERE {where_sql}
             LIMIT {top_k}

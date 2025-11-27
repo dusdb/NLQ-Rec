@@ -213,6 +213,11 @@ function App() {
                 console.log('📊 currentFullPanelList 개수:', apiResponse.currentFullPanelList?.length);
                 console.log('📊 첫 번째 패널 grouped_details:', apiResponse.currentFullPanelList?.[0]?.grouped_details ? '있음' : '없음');
                 
+                // 💾 디버깅용: window 객체에 저장
+                window.currentFullPanelList = apiResponse.currentFullPanelList;
+                window.firstPanel = apiResponse.currentFullPanelList?.[0];
+                console.log('💾 window.firstPanel 저장 완료 (Console에서 확인 가능)');
+                
                 setTotalCount(apiResponse.totalCount);
                 setFilterTags(apiResponse.filterTags || []);
                 setSamplePanels(apiResponse.samplePanels);

@@ -358,7 +358,11 @@ class PromptTemplates:
 ## 중요 규칙
 1. panel_uuid 필수 포함
 2. SELECT 형식: 
-SELECT panel_id, panel_uuid, birth_year, gender, region_main, region_sub, job_category, job_detail, personal_income
+SELECT panel_id, panel_uuid, birth_year, gender, region_main, region_sub, 
+       job_category, job_detail, education, marital_status, child_num, family_num,
+       personal_income, household_income, 
+       car_brand, car_model, has_car,
+       owned_phone_brand, owned_phone_model, smoking_exp
 FROM {schema['table_name']} 
 WHERE ...
 3. 오직 SQL 문장만 출력 (설명 금지, JSON 금지, 마크다운 금지)
