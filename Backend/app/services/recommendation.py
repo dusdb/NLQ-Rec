@@ -58,35 +58,11 @@ class RecommendationEngine:
         return False
 
     def is_drilldown_allowed(self, search_conditions: Dict, feature: str) -> bool:
+        """
+        더 세부적인 드릴다운이 허용되는지 판단.
+        예: location은 광역 → 기초로 내려갈 때만 허용 등.
+        """
         feature_lower = feature.lower()
-        
-        if any(keyword in feature_lower for keyword in self.HIERARCHY_MAP['location']):
-            has_location = search_conditions.get('location') is not None
-            has_district = search_conditions.get('district') is not None
-            return has_location and not has_district
-        
-        if any(keyword in feature_lower for keyword in self.HIERARCHY_MAP['job']):
-            return search_conditions.get('job') is not None
-            
-        return False
-
-    def calculate_lift(
-        self,
-        pattern_percentage: float,
-        feature_key: str,
-        value_key: str,
-        full_statistics: Dict
-    ) -> Optional[float]:
-        if not full_statistics:
-            return None
-            
-        stat_key_map = {
-            'job': 'job_distribution', '직업': 'job_distribution',
-            'location': 'location_distribution', '지역': 'location_distribution',
-            'age': 'age_distribution', '나이': 'age_distribution',
-            'gender': 'gender_distribution', '성별': 'gender_distribution',
-            'income': 'income_distribution', '소득': 'income_distribution'
-        }
         
         # 위치 계층
         if any(keyword in feature_lower for keyword in self.HIERARCHY_MAP['location']):
@@ -111,6 +87,11 @@ class RecommendationEngine:
         search_conditions: Dict,
         full_statistics: Optional[Dict] = None  # 🔹 시그니처는 유지하지만 내부에서 사용 안 함
     ) -> List[Dict]:
+        """
+        1) 사소한 키워드(TRIVIAL_KEYWORDS) 제거
+        2) 자연어 질의에 이미 포함된 조건(나이/성별/지역/직업/소득 등) 제거
+        3) 나머지는 전부 남김 (lift/percentage 기준으로 걸러내지 않음)
+        """
         filtered = []
         
         for pattern in patterns:
@@ -119,12 +100,15 @@ class RecommendationEngine:
             insight = pattern.get('insight', '')
             # percentage는 이후 Top2 정렬에만 사용 (여기선 사용 X)
             percentage = pattern.get('percentage', 0)
-            
+
+            # 1) 사소한 키워드가 포함된 패턴은 제거
             if any(kw in feature or kw in value or kw in insight for kw in self.TRIVIAL_KEYWORDS):
                 continue
 
+            # 2) 검색 조건과 중복되는지 확인
             should_exclude = False
             
+            # 드릴다운 허용이 아닌 경우, 질의에 이미 포함된 그룹은 제외
             if not self.is_drilldown_allowed(search_conditions, feature):
                 if any(w in feature for w in ['age', '나이', '연령']) and self.is_condition_applied(search_conditions, 'age', value):
                     should_exclude = True
@@ -141,27 +125,9 @@ class RecommendationEngine:
                 print(f"   ⚠️ 필터링(중복 조건): {feature} - {value}")
                 continue
 
-            is_boring_region = any(r in value for r in ['수도권', '서울', '경기'])
-            min_lift_threshold = 2.0 if is_boring_region else 1.3  # 수도권은 2배 이상이어야 추천
-            
-            is_significant = False
-            
-            lift = self.calculate_lift(percentage, feature, value, full_statistics)
-            
-            if lift is not None:
-                if lift >= min_lift_threshold:
-                    is_significant = True
-                    print(f"발견: {feature}={value} (Lift: {lift:.2f})")
-                else:
-                    print(f"제외: {feature}={value} (Lift: {lift:.2f} < {min_lift_threshold})")
-            
-            elif percentage >= 30:
-                is_significant = True
-            
-            if is_significant:
-                filtered.append(pattern)
-            else:
-                pass 
+            # 🔹 더 이상 lift / percentage 기준 필터링은 하지 않고,
+            #     위 조건만 통과하면 모두 남김.
+            filtered.append(pattern)
 
         return filtered
 
@@ -192,13 +158,11 @@ class RecommendationEngine:
             
             # 🔹 끝 문장 정리: '입니다입니다' 같은 중복 제거
             cleaned_insight = insight.strip()
-            for suffix in ['입니다.', '습니다.', '합니다.', '입니다', '습니다', '합니다']:
-                if cleaned_insight.endswith(suffix):
-                    cleaned_insight = cleaned_insight[:-len(suffix)]
-                    if not cleaned_insight.endswith('.'):
-                        cleaned_insight += "."
-                    break
+            cleaned_insight = re.sub(r'(입니다|합니다|습니다)+$', r'\1', cleaned_insight)
+            if not cleaned_insight.endswith('.'):
+                cleaned_insight += "."
             
+            # 버튼에 들어갈 queryPart 정리
             query_part = value
             if '(' in query_part:
                 query_part = query_part.split('(')[0].strip()
