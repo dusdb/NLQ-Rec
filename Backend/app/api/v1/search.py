@@ -425,15 +425,20 @@ async def search_panels(request: SearchRequest):
 
         is_fallback = False
         if not filtered_panels and actual_mode in ["rdb", "hybrid"]:
-            print(f"정확한 매칭 결과 없음. 유사도 기반 검색(Vector Only)으로 전환합니다...")
+            print(f"정확한 매칭 결과 없음. 유사도 기반 검색(Vector + 조건 필터)로 전환합니다...")
             
-            filtered_panels = search_agent.semantic_search(request.query, top_k=target_count)  # 🆕 변경
+            # 🔹 변경 포인트: 순수 semantic_search → 조건 포함 hybrid_search로 변경
+            filtered_panels = search_agent.hybrid_search(
+                query_text=request.query,
+                sql_conditions=search_conditions,
+                top_k=target_count
+            )
             is_fallback = True
             
             search_metadata = {
-                "search_type": "fallback_vector",
+                "search_type": "fallback_hybrid",
                 "original_mode": actual_mode,
-                "message": "조건에 완벽히 부합하는 대상이 없어, 가장 유사한 대상을 찾았습니다."
+                "message": "조건에 완벽히 부합하는 대상이 없어, 가장 유사한 대상을 (조건을 유지한 채) 찾았습니다."
             }
 
         step3_time = round(time.time() - step3_start, 3)
