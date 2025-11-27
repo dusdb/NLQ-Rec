@@ -904,12 +904,21 @@ const PanelDetail = ({ panel, onClose }) => {
 };
 
 function SearchProgressBar({ currentStep, percentage, message }) {
+    // 단계별 제목
+    const getTitle = () => {
+        if (percentage >= 100) return '완료!';
+        if (percentage >= 80) return 'AI 전략 작성 중';
+        if (percentage >= 60) return 'AI 패턴 분석 중';
+        if (percentage >= 40) return '패널 분석 중';
+        return '패널 검색 중';
+    };
+
     return (
         <div className="search-progress-overlay">
             <div className="progress-card">
-                <h3 className="progress-title">AI 분석 진행 중</h3>
+                <h3 className="progress-title">{getTitle()}</h3>
                 
-                {/* 🆕 스피너 추가 */}
+                {/* 스피너 */}
                 <div className="progress-spinner"></div>
                 
                 <p className="progress-step-text">{message}</p>
