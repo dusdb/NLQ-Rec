@@ -654,3 +654,379 @@ async def vector_only_search(request: SearchRequest):
             status_code=500,
             detail={"error": str(e)}
         )
+
+class RefineInsightsRequest(BaseModel):
+    panelUuids: List[str]  # 🆕 변경: 전체 데이터 대신 UUID만
+    additionalCondition: str
+    originalQuery: str
+
+
+@router.post("/refine-insights")
+async def refine_insights(request: RefineInsightsRequest):
+    """
+    기존 검색 결과에 조건 추가하여 DB에서 필터링 후 인사이트만 재생성
+    """
+    start_time = time.time()
+    
+    try:
+        print(f"\n{'='*60}")
+        print(f"인사이트 재생성 시작")
+        print(f"기존 패널: {len(request.panelUuids)}개 UUID")
+        print(f"추가 조건: {request.additionalCondition}")
+        print(f"{'='*60}\n")
+        
+        # Step 1: 추가 조건만 분석 (기존 조건 제외)
+        print("Step 1: 추가 조건 분석...")
+        step1_start = time.time()
+        
+        # 🆕 변경: additionalCondition만 분석
+        analysis_result = claude_service.analyze_query(request.additionalCondition)
+        
+        if not analysis_result.get('success'):
+            raise ValueError(f"조건 분석 실패: {analysis_result.get('error')}")
+        
+        # 추가 조건만 추출
+        additional_conditions = analysis_result.get('data', {}).get('search_conditions', {})
+        step1_time = round(time.time() - step1_start, 3)
+        print(f"Step 1 완료: {step1_time}초")
+        print(f"추가된 조건: {additional_conditions}")
+        
+        # Step 2: DB에서 필터링 (UUID + 추가 조건만)
+        print("Step 2: DB에서 필터링...")
+        step2_start = time.time()
+        
+        filtered_panels = await filter_panels_by_uuids_and_conditions(
+            request.panelUuids, 
+            additional_conditions  # 🆕 추가 조건만
+        )
+        
+        step2_time = round(time.time() - step2_start, 3)
+        print(f"Step 2 완료: {len(request.panelUuids)}명 → {len(filtered_panels)}명 ({step2_time}초)")
+        
+        if not filtered_panels:
+            return {
+                "success": True,
+                "totalCount": 0,
+                "filteredPanels": [],
+                "recommendations": [],
+                "message": f"'{request.additionalCondition}' 조건을 만족하는 패널이 없습니다.",
+                "control": {
+                    "status": "no_results",
+                    "original_count": len(request.panelUuids),
+                    "filtered_count": 0
+                }
+            }
+        
+        # Step 3: 프론트엔드 형식으로 변환
+        print("Step 3: 데이터 변환...")
+        step3_start = time.time()
+        
+        converted_panels = [
+            convert_panel_to_frontend_format(panel)
+            for panel in filtered_panels
+        ]
+        
+        step3_time = round(time.time() - step3_start, 3)
+        print(f"Step 3 완료: {step3_time}초")
+        
+        # Step 4: 인사이트 재생성
+        print("Step 4: 인사이트 재생성...")
+        step4_start = time.time()
+        
+        # 통계 재계산
+        job_stats = {}
+        location_stats = {}
+        age_stats = {}
+        gender_stats = {}
+        
+        for p in converted_panels:
+            job = p.get('job_category', '미상')
+            job_stats[job] = job_stats.get(job, 0) + 1
+            
+            location = p.get('region_main', '미상')
+            location_stats[location] = location_stats.get(location, 0) + 1
+            
+            birth_year = p.get('birth_year')
+            if birth_year:
+                age = 2025 - birth_year
+                age_group = f"{(age // 10) * 10}대"
+                age_stats[age_group] = age_stats.get(age_group, 0) + 1
+            
+            gender = p.get('gender', '미상')
+            gender_stats[gender] = gender_stats.get(gender, 0) + 1
+        
+        # 🆕 인사이트 생성 시 combined_query 사용 (전체 맥락)
+        combined_query = f"{request.originalQuery}, {request.additionalCondition}"
+        
+        # 인사이트 추출
+        insight_result = claude_service.extract_insights(
+            panel_data=converted_panels[:10],
+            original_query=combined_query,
+            full_statistics={
+                "job_distribution": job_stats,
+                "location_distribution": location_stats,
+                "age_distribution": age_stats,
+                "gender_distribution": gender_stats,
+                "total_count": len(converted_panels)
+            }
+        )
+        
+        step4_time = round(time.time() - step4_start, 3)
+        print(f"Step 4 완료: {step4_time}초")
+        
+        # Step 5: 임베딩 기반 추천 생성
+        print("Step 5: 추천 생성...")
+        step5_start = time.time()
+        
+        recommendations = []
+        
+        if len(converted_panels) > 0:
+            from app.services.embedding_insight import embedding_insight_engine
+            
+            panel_uuids = [p['panel_uuid'] for p in converted_panels if p.get('panel_uuid')]
+            
+            # 🆕 전체 조건 분석 (추천 생성용)
+            full_analysis = claude_service.analyze_query(combined_query)
+            full_conditions = full_analysis.get('data', {}).get('search_conditions', {})
+            
+            embedding_insights = await embedding_insight_engine.extract_insights_by_embedding(
+                panel_uuids=panel_uuids,
+                search_conditions=full_conditions,  # 전체 조건으로 중복 체크
+                top_k=2
+            )
+            
+            for i, insight in enumerate(embedding_insights):
+                keyword = insight['value']
+                
+                recommendations.append({
+                    "id": f"rec-refined-{i+1}",
+                    "text": insight['insight'],
+                    "action": {
+                        "buttonText": f"+ '{keyword}' 추가",
+                        "data": {
+                            "type": "embedding_insight",
+                            "value": keyword,
+                            "queryPart": keyword
+                        }
+                    }
+                })
+        
+        step5_time = round(time.time() - step5_start, 3)
+        print(f"Step 5 완료: {len(recommendations)}개 추천 ({step5_time}초)")
+        
+        total_time = round(time.time() - start_time, 2)
+        print(f"\n총 소요시간: {total_time}초\n")
+        
+        return {
+            "success": True,
+            "totalCount": len(converted_panels),
+            "filteredPanels": converted_panels,
+            "samplePanels": converted_panels[:3],
+            "recommendations": recommendations,
+            "insights": insight_result.get('data', {}),
+            "control": {
+                "status": "success",
+                "message": f"필터링 완료 ({len(converted_panels)}명)",
+                "original_count": len(request.panelUuids),
+                "filtered_count": len(converted_panels),
+                "condition_added": request.additionalCondition,
+                "time_breakdown": {
+                    "step1_analysis": step1_time,
+                    "step2_db_filtering": step2_time,
+                    "step3_conversion": step3_time,
+                    "step4_insights": step4_time,
+                    "step5_recommendations": step5_time
+                },
+                "total_response_time_seconds": total_time
+            }
+        }
+        
+    except Exception as e:
+        error_detail = traceback.format_exc()
+        print(f"\nRefine Insights Error:\n{error_detail}\n")
+        
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": str(e),
+                "traceback": error_detail
+            }
+        )
+
+
+async def filter_panels_by_uuids_and_conditions(
+    panel_uuids: List[str],
+    conditions: Dict[str, Any]
+) -> List[Dict[str, Any]]:
+    """
+    UUID 리스트 + 조건으로 DB에서 필터링 (SQL)
+    """
+    if not panel_uuids:
+        return []
+    
+    current_year = 2025
+    where_clauses = []
+    params = []
+    
+    # 1. UUID 조건 (기존 결과 범위 한정)
+    placeholders = ','.join([f'${i+1}' for i in range(len(panel_uuids))])
+    where_clauses.append(f"panel_uuid IN ({placeholders})")
+    params.extend(panel_uuids)
+    
+    # 2. 나이 조건
+    if conditions.get('age_range'):
+        age_range = conditions['age_range']
+        min_age = age_range.get('min', 0)
+        max_age = age_range.get('max', 100)
+        start_year = current_year - max_age
+        end_year = current_year - min_age
+        where_clauses.append(f"birth_year BETWEEN ${len(params)+1} AND ${len(params)+2}")
+        params.extend([start_year, end_year])
+    
+    # 3. 성별 조건
+    if conditions.get('gender'):
+        where_clauses.append(f"gender = ${len(params)+1}")
+        params.append(conditions['gender'])
+    
+    # 4. 지역 조건
+    location = conditions.get('location')
+    if location:
+        if location == '지방':
+            where_clauses.append("region_main NOT IN ('서울', '경기', '인천')")
+        else:
+            where_clauses.append(f"region_main LIKE ${len(params)+1}")
+            params.append(f"%{location}%")
+    
+    # 5. 상세 지역
+    if conditions.get('district'):
+        where_clauses.append(f"region_sub LIKE ${len(params)+1}")
+        params.append(f"%{conditions['district']}%")
+    
+    # 6. 직업
+    if conditions.get('job'):
+        where_clauses.append(f"job_category LIKE ${len(params)+1}")
+        params.append(f"%{conditions['job']}%")
+    
+    # 7. 소득
+    if conditions.get('income_keyword'):
+        where_clauses.append(f"personal_income LIKE ${len(params)+1}")
+        params.append(f"%{conditions['income_keyword']}%")
+    
+    # 8. 휴대폰
+    if conditions.get('phone_brand'):
+        where_clauses.append(f"owned_phone_brand LIKE ${len(params)+1}")
+        params.append(f"%{conditions['phone_brand']}%")
+    
+    # 9. 차량
+    if conditions.get('car_brand'):
+        where_clauses.append(f"car_brand LIKE ${len(params)+1}")
+        params.append(f"%{conditions['car_brand']}%")
+    
+    # 10. 흡연
+    smoking = conditions.get('smoking')
+    if smoking == '흡연':
+        where_clauses.append("smoking_exp != '담배를 피워본 적이 없다'")
+    elif smoking == '비흡연':
+        where_clauses.append("smoking_exp = '담배를 피워본 적이 없다'")
+    
+    # SQL 조합
+    where_sql = " AND ".join(where_clauses)
+    
+    sql = f"""
+        SELECT 
+            panel_id, panel_uuid, birth_year, gender,
+            region_main, region_sub, job_category, job_detail,
+            education, marital_status, personal_income, household_income,
+            owned_phone_brand, owned_phone_model,
+            car_brand, car_model, has_car,
+            smoking_exp, child_num, family_num
+        FROM panel_master
+        WHERE {where_sql}
+    """
+    
+    print(f"🔍 실행할 SQL:\n{sql}\n")
+    print(f"📊 파라미터 개수: {len(params)}")
+    
+    try:
+        results = await execute_fetch_query(sql, tuple(params))
+        print(f"✅ DB 필터링 완료: {len(results)}명")
+        return results
+    except Exception as e:
+        print(f"❌ DB 필터링 실패: {e}")
+        import traceback
+        traceback.print_exc()
+        return []
+
+
+def filter_panels_by_condition(
+    panels: List[Dict[str, Any]], 
+    conditions: Dict[str, Any]
+) -> List[Dict[str, Any]]:
+    """
+    패널 리스트를 조건으로 필터링 (레거시, 사용 안 함)
+    """
+    filtered = []
+    current_year = 2025
+    
+    for panel in panels:
+        match = True
+        
+        # 나이 조건
+        if conditions.get('age_range'):
+            age_range = conditions['age_range']
+            birth_year = panel.get('birth_year')
+            if birth_year:
+                age = current_year - birth_year
+                min_age = age_range.get('min', 0)
+                max_age = age_range.get('max', 100)
+                if not (min_age <= age <= max_age):
+                    match = False
+        
+        # 성별 조건
+        if conditions.get('gender'):
+            if panel.get('gender') != conditions['gender']:
+                match = False
+        
+        # 지역 조건
+        location = conditions.get('location')
+        if location:
+            if location == '지방':
+                if panel.get('region_main') in ['서울', '경기', '인천']:
+                    match = False
+            else:
+                if location not in (panel.get('region_main') or ''):
+                    match = False
+        
+        # 상세 지역
+        if conditions.get('district'):
+            if conditions['district'] not in (panel.get('region_sub') or ''):
+                match = False
+        
+        # 직업
+        if conditions.get('job'):
+            job_category = panel.get('job_category') or ''
+            if conditions['job'] not in job_category:
+                match = False
+        
+        # 소득
+        if conditions.get('income_keyword'):
+            income = panel.get('personal_income') or ''
+            if conditions['income_keyword'] not in income:
+                match = False
+        
+        # 휴대폰
+        if conditions.get('phone_brand'):
+            phone = panel.get('owned_phone_brand') or ''
+            if conditions['phone_brand'] not in phone:
+                match = False
+        
+        # 차량
+        if conditions.get('car_brand'):
+            car = panel.get('car_brand') or ''
+            if conditions['car_brand'] not in car:
+                match = False
+        
+        if match:
+            filtered.append(panel)
+    
+    return filtered

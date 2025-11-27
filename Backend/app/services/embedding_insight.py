@@ -64,7 +64,7 @@ class EmbeddingInsightEngine:
             # 패널들의 모든 임베딩 조회 (asyncpg 사용)
             from app.utils.database import execute_fetch_query
             
-            placeholders = ','.join([f"'{uuid}'" for uuid in panel_uuids])
+            placeholders = ','.join([f'${i+1}' for i in range(len(panel_uuids))])
             sql = f"""
             SELECT embedding 
             FROM vector_index 
@@ -74,7 +74,7 @@ class EmbeddingInsightEngine:
             """
             
             print(f"📝 SQL 실행: {sql[:200]}...")
-            results = await execute_fetch_query(sql)
+            results = await execute_fetch_query(sql, tuple(panel_uuids))
             print(f"✅ DB 조회 완료: {len(results)}개 임베딩")
             
             if not results:

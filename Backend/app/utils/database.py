@@ -51,9 +51,13 @@ async def close_db_pool():
         print("✅ Database connection pool closed.")
 
 
-async def execute_fetch_query(sql_query: str) -> List[Dict[str, Any]]:
+async def execute_fetch_query(sql_query: str, params: tuple = None) -> List[Dict[str, Any]]:
     """
     SQL 쿼리를 실행하고 결과를 딕셔너리 리스트 형태로 반환합니다.
+    
+    Args:
+        sql_query: SQL 쿼리 문자열 (parameterized query 지원)
+        params: 쿼리 파라미터 튜플 (optional)
     """
     global _pool
     
@@ -63,7 +67,13 @@ async def execute_fetch_query(sql_query: str) -> List[Dict[str, Any]]:
 
     try:
         async with _pool.acquire() as conn:
-            rows = await conn.fetch(sql_query)
+            if params:
+                # Parameterized query 실행
+                rows = await conn.fetch(sql_query, *params)
+            else:
+                # 일반 쿼리 실행
+                rows = await conn.fetch(sql_query)
+            
             results = [dict(row) for row in rows]
             return results
     except Exception as e:

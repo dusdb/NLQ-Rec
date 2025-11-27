@@ -217,7 +217,7 @@ function App() {
         }
     };
     
-    const handleRecommendationClick = (rec) => {
+    const handleRecommendationClick = async (rec) => {
         const actionData = rec.action.data;
         const partToAdd = actionData.queryPart || actionData.value;
         
@@ -244,13 +244,48 @@ function App() {
             return;
         }
         
-        // 쿼리 추가
-        const newQuery = query.trim() 
-            ? `${query.trim()}, ${partToAdd}` 
-            : partToAdd;
+        // 🆕 기존 결과에서 필터링 (재검색 없음)
+        console.log(`🔍 기존 결과에서 필터링: "${partToAdd}"`);
+        setIsLoading(true);
         
-        setQuery(newQuery);
-        handleSearch(newQuery);
+        try {
+            const response = await axios.post(`${API_BASE_URL}/api/v1/refine-insights`, {
+                panelUuids: currentFullPanelList.map(p => p.panel_uuid),
+                additionalCondition: partToAdd,
+                originalQuery: query
+            });
+            
+            const apiResponse = response.data;
+            
+            console.log('✅ 필터링 완료:', apiResponse.control);
+            
+            // 쿼리 업데이트
+            const newQuery = query.trim() ? `${query.trim()}, ${partToAdd}` : partToAdd;
+            setQuery(newQuery);
+            
+            // 결과 갱신 (필터링된 결과로)
+            setTotalCount(apiResponse.totalCount);
+            setCurrentFullPanelList(apiResponse.filteredPanels);
+            setSamplePanels(apiResponse.samplePanels);
+            setRecommendations(apiResponse.recommendations);
+            
+            // 필터 태그 추가
+            setFilterTags(prev => [
+                ...prev,
+                {
+                    id: `tag-${Date.now()}`,
+                    label: "추가 조건",
+                    value: partToAdd,
+                    queryPart: partToAdd
+                }
+            ]);
+            
+        } catch (error) {
+            console.error("필터링 실패:", error);
+            alert("조건 추가 실패. 다시 시도해주세요.");
+        } finally {
+            setIsLoading(false);
+        }
     };
     
     const handleTagRemove = (tagToRemove) => {
