@@ -304,11 +304,13 @@ class PromptTemplates:
         if conditions.get('age_range') is not None:
             age_range = conditions['age_range']
             if isinstance(age_range, dict):
-                min_age = age_range.get('min') or 0
-                max_age = age_range.get('max') or 100
-                start_year = current_year - max_age
-                end_year = current_year - min_age
-                sql_hints.append(f"birth_year BETWEEN {start_year} AND {end_year}")
+                min_age = age_range.get('min', 0)
+                max_age = age_range.get('max', 100)
+
+                sql_hints.append(
+                    f"EXTRACT(YEAR FROM AGE(NOW(), TO_DATE(CONCAT(birth_year, '-01-01'), 'YYYY-MM-DD'))) "
+                    f"BETWEEN {min_age} AND {max_age}"
+                )
 
         if conditions.get('gender') is not None:
             sql_hints.append(f"gender = '{conditions['gender']}'")
