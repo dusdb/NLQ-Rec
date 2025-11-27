@@ -28,6 +28,16 @@ class Settings(BaseSettings):
     max_tokens: int = 4096
     enable_prompt_caching: bool = True
 
+    # 검색 설정 추가
+    DEFAULT_TOP_K: Optional[int] = None  # None으로 설정 시 제한 없음
+    MAX_TOP_K: int = 10000  # top_k가 None일 때 사용할 최대값
+
+    POSTGRES_HOST: str
+
+    # 검색 설정 추가
+    DEFAULT_TOP_K: Optional[int] = None  # None으로 설정 시 제한 없음
+    MAX_TOP_K: int = 10000  # top_k가 None일 때 사용할 최대값
+
     POSTGRES_HOST: str
     POSTGRES_PORT: int = 5432
     POSTGRES_DB: str
@@ -114,6 +124,8 @@ class Settings(BaseSettings):
             "app_name": self.app_name,
             "app_version": self.app_version,
             "debug": self.debug,
+            "DEFAULT_TOP_K": self.DEFAULT_TOP_K,
+            "MAX_TOP_K": self.MAX_TOP_K,
             "POSTGRES_HOST": self.POSTGRES_HOST,
             "POSTGRES_PORT": self.POSTGRES_PORT,
             "POSTGRES_DB": self.POSTGRES_DB,

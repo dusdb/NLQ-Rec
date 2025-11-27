@@ -27,6 +27,9 @@ from app.utils import (
 )
 
 from app.services.formatters import convert_panel_to_frontend_format
+from app.config.settings import get_settings
+
+settings = get_settings()
 
 router = APIRouter()
 
@@ -38,7 +41,7 @@ router = APIRouter()
 class SearchRequest(BaseModel):
     query: str
     search_mode: str = "hybrid"
-    top_k: int = 100
+    top_k: Optional[int] = settings.DEFAULT_TOP_K
 
 
 class ReportRequest(BaseModel):
@@ -75,7 +78,7 @@ def emit_progress(step: int, progress: int, message: str, data: dict = None):
 # =========================
 
 @router.get("/search-stream")
-async def search_panels_stream(query: str, search_mode: str = "hybrid", top_k: int = 100):
+async def search_panels_stream(query: str, search_mode: str = "hybrid", top_k: Optional[int] = settings.DEFAULT_TOP_K):
     """
     SSE 스트리밍 방식 검색
     - 검색 단계 진행 상황을 실시간으로 전송
@@ -108,7 +111,7 @@ async def search_panels_stream(query: str, search_mode: str = "hybrid", top_k: i
             search_conditions = conditions_json.get("search_conditions", {})
 
             extracted_count = conditions_json.get("target_count")
-            target_count = extracted_count if extracted_count else top_k
+            target_count = extracted_count or top_k or settings.MAX_TOP_K
             print(f"🎯 [SSE] 타겟 인원수: {target_count}명 (추출: {extracted_count}, 기본: {top_k})")
 
             # -----------------------
@@ -520,10 +523,11 @@ async def search_panels(request: SearchRequest):
         search_conditions = conditions_json.get("search_conditions", {})
 
         extracted_count = conditions_json.get("target_count")
-        target_count = extracted_count if extracted_count else request.top_k
+        target_count = extracted_count or request.top_k or settings.MAX_TOP_K
         print(
             f"🎯 타겟 인원수: {target_count}명 (추출: {extracted_count}, 기본: {request.top_k})"
         )
+        
 
         # -----------------------
         # Step 2: SQL 생성 (Haiku)
@@ -1128,7 +1132,7 @@ async def generate_strategy_report(request: ReportRequest):
                 SearchRequest(
                     query=request.originalQuery,
                     search_mode="hybrid",
-                    top_k=100,
+                    top_k=settings.DEFAULT_TOP_K,
                 )
             )
 
@@ -1196,7 +1200,7 @@ async def generate_strategy_report(request: ReportRequest):
 async def search_panels_get(
     query: str,
     search_mode: str = "hybrid",
-    top_k: int = 100,
+    top_k: Optional[int] = settings.DEFAULT_TOP_K,
 ):
 
     request = SearchRequest(
