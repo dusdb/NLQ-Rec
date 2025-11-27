@@ -9,6 +9,8 @@ import json
 import traceback
 import asyncio
 
+from fastapi.encoders import jsonable_encoder
+
 from app.utils.database import execute_fetch_query
 from app.services.claude import claude_service
 from app.services.search import search_agent
@@ -462,8 +464,9 @@ async def search_panels_stream(query: str, search_mode: str = "hybrid", top_k: i
                     "total_response_time_seconds": total_time,
                 },
             }
-
-            yield emit_progress(9, 100, "검색 및 분석이 완료되었어요.", {"result": result_data})
+            
+            clean_data = jsonable_encoder(result_data)
+            yield emit_progress(9, 100, "검색 및 분석이 완료되었어요.", {"result": clean_data})
 
         except Exception as e:
             error_detail = traceback.format_exc()

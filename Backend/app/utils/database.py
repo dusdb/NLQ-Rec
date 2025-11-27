@@ -2,7 +2,7 @@
 
 import asyncpg
 import ssl
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from app.config.settings import get_settings
 
 settings = get_settings()
@@ -51,9 +51,9 @@ async def close_db_pool():
         print("✅ Database connection pool closed.")
 
 
-async def execute_fetch_query(sql_query: str) -> List[Dict[str, Any]]:
+async def execute_fetch_query(sql_query: str, params: Optional[tuple] = None) -> List[Dict[str, Any]]:
     """
-    SQL 쿼리를 실행하고 결과를 딕셔너리 리스트 형태로 반환합니다.
+    SQL + 파라미터를 실행하고 결과를 딕셔너리 리스트 형태로 반환합니다.
     """
     global _pool
     
@@ -63,9 +63,14 @@ async def execute_fetch_query(sql_query: str) -> List[Dict[str, Any]]:
 
     try:
         async with _pool.acquire() as conn:
-            rows = await conn.fetch(sql_query)
+            if params:
+                rows = await conn.fetch(sql_query, *params)
+            else:
+                rows = await conn.fetch(sql_query)
+
             results = [dict(row) for row in rows]
             return results
+
     except Exception as e:
         print(f"❌ SQL Execution Error: {e}")
         raise ConnectionError(f"쿼리 실행 중 오류: {e}")
