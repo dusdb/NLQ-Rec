@@ -8,6 +8,7 @@ import time
 import json
 import traceback
 import asyncio
+import re
 
 from fastapi.encoders import jsonable_encoder
 
@@ -1494,9 +1495,24 @@ async def filter_panels_by_uuids_and_conditions(
         params.append(f"%{conditions['district']}%")
 
     # 6. 직업
-    if conditions.get("job"):
-        where_clauses.append(f"job_category LIKE ${len(params) + 1}")
-        params.append(f"%{conditions['job']}%")
+    # 6. 직업
+    job_value = conditions.get("job")
+    if job_value:
+        # 공백, /, +, ·, 콤마, 점, -, | 모두 분리
+        keywords = re.split(r'[ +/·.,&|-]', job_value)
+        keywords = [k.strip() for k in keywords if k.strip()]
+
+        if len(keywords) == 1:
+            where_clauses.append(f"job_category LIKE ${len(params) + 1}")
+            params.append(f"%{keywords[0]}%")
+        else:
+            or_clauses = []
+            for kw in keywords:
+                or_clauses.append(f"job_category LIKE ${len(params) + 1}")
+                params.append(f"%{kw}%")
+
+            where_clauses.append("(" + " OR ".join(or_clauses) + ")")
+
 
     # 7. 소득
     if conditions.get("income_keyword"):
@@ -1529,7 +1545,7 @@ async def filter_panels_by_uuids_and_conditions(
             education, marital_status, personal_income, household_income,
             owned_phone_brand, owned_phone_model,
             car_brand, car_model, has_car,
-            smoking_exp, child_num, family_num
+            smoking_exp, alcohol_exp, child_num, family_num
         FROM panel_master
         WHERE {where_sql}
     """

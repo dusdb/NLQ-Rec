@@ -187,6 +187,7 @@ def convert_panel_to_frontend_format(panel: Dict[str, Any]) -> Dict[str, Any]:
         "family_num": panel.get('family_num'),
         "has_car": panel.get('has_car'),
         "smoking_exp": panel.get('smoking_exp'),
+        "alcohol_exp": panel.get("alcohol_exp"),
         "age": age_display,
         "location": location,
         "job": job,

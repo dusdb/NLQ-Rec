@@ -387,7 +387,22 @@ WHERE ...
 5. LIKE 연산자 활용: 텍스트 매칭이 필요한 컬럼(브랜드, 소득구간 등)은 반드시 LIKE를 사용
 6. "지방" 검색: region_main NOT IN ('서울', '경기', '인천')
 7. "고소득" 검색: personal_income LIKE '%700%' OR LIKE '%800%' OR LIKE '%900%' OR LIKE '%1000%'
+8. alcohol_exp 조건 생성 규칙:
+   - 사용자가 "술", "주류", "마시는 사람", "음주"와 같이 포괄적 표현을 사용할 경우,
+     WHERE 절에는 반드시 아래 조건을 포함해야 한다:
 
+       (alcohol_exp LIKE '%술%' OR alcohol_exp IS NOT NULL)
+
+   - 특정 술 종류(예: 소주, 맥주, 막걸리, 양주 등)가 명확할 경우에도 아래 두 조건 중 하나는 반드시 포함해야 한다:
+
+       alcohol_exp LIKE '%{{keyword}}%'
+       OR alcohol_exp LIKE '%술%'
+       OR alcohol_exp IS NOT NULL
+
+   - alcohol_exp는 매우 다양한 포맷으로 기록되므로,
+     절대로 소주/맥주/양주 등의 정확한 문자열 일치만으로 제한해서는 안 된다.
+
+     
 SQL:"""
         return prompt
     
