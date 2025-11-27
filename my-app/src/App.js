@@ -259,11 +259,7 @@ function App() {
         // 🆕 기존 결과에서 필터링 (재검색 없음)
         console.log(`🔍 기존 결과에서 필터링: "${partToAdd}"`);
         setIsLoading(true);
-        
-        // ✅ 가짜 진행률로 자연스럽게 표시
-        setProgressData({ step: 1, progress: 20, message: '조건을 추가하고 있어요...' });
-        setTimeout(() => setProgressData(prev => ({ ...prev, progress: 60 })), 200);
-        setTimeout(() => setProgressData(prev => ({ ...prev, progress: 90 })), 400);
+        setProgressData({ step: 0, progress: 0, message: '' }); // ✅ 프로그레스 데이터 초기화
         
         try {
             const response = await axios.post(`${API_BASE_URL}/api/v1/refine-insights`, {
@@ -400,12 +396,21 @@ function App() {
                     </div>
                 </section>
 
-                {isLoading && (
+                {isLoading && progressData.message && (
                     <SearchProgressBar 
                         currentStep={progressData.step}
                         percentage={progressData.progress}
                         message={progressData.message}
                     />
+                )}
+
+                {isLoading && !progressData.message && (
+                    <div className="search-progress-overlay">
+                        <div className="progress-card">
+                            <h3 className="progress-title">조건 추가 중</h3>
+                            <div className="progress-spinner"></div>
+                        </div>
+                    </div>
                 )}
 
                 {isSearched && !isLoading && totalCount > 0 && (
