@@ -31,6 +31,7 @@ class RecommendationEngine:
         if not search_conditions:
             return False
             
+        # --- 기본 5개 ---
         if feature_group == 'age':
             return search_conditions.get('age_range') is not None
             
@@ -50,8 +51,63 @@ class RecommendationEngine:
             return search_conditions.get('job') is not None
             
         elif feature_group == 'income':
-            return search_conditions.get('income_keyword') is not None
-            
+            # 기존 income_keyword + 혹시 모를 income_level 둘 다 체크
+            return (
+                search_conditions.get('income_keyword') is not None or
+                search_conditions.get('income_level') is not None
+            )
+
+        # --- 확장된 그룹들 ---
+
+        # 학력
+        elif feature_group == 'education':
+            return search_conditions.get('education') is not None
+
+        # 결혼 상태
+        elif feature_group == 'marital_status':
+            return search_conditions.get('marital_status') is not None
+
+        # 자녀 유무/자녀 수
+        elif feature_group == 'child':
+            return (
+                search_conditions.get('child') is not None or
+                search_conditions.get('child_num') is not None
+            )
+
+        # 가족 구성/가족 수
+        elif feature_group == 'family':
+            return (
+                search_conditions.get('family') is not None or
+                search_conditions.get('family_num') is not None
+            )
+
+        # 휴대폰 브랜드
+        elif feature_group == 'phone':
+            return (
+                search_conditions.get('phone_brand') is not None or
+                search_conditions.get('owned_phone_brand') is not None
+            )
+
+        # 차량/자동차
+        elif feature_group == 'car':
+            return (
+                search_conditions.get('car_brand') is not None or
+                search_conditions.get('has_car') is not None
+            )
+
+        # 흡연
+        elif feature_group == 'smoking':
+            return search_conditions.get('smoking') is not None
+
+        # 음주
+        elif feature_group == 'alcohol':
+            return search_conditions.get('alcohol') is not None
+
+        # 보유 제품/전자제품
+        elif feature_group == 'product':
+            return search_conditions.get('product') is not None
+
+        # 기타: 검색 조건 dict에 key로 직접 들어있는 경우
         elif feature_group in search_conditions:
             return search_conditions.get(feature_group) is not None
             
@@ -77,10 +133,6 @@ class RecommendationEngine:
             
         return False
 
-    # 🔻 기존 lift 계산 함수는 더 이상 사용하지 않으므로 제거(혹은 남겨도 되지만 여기선 삭제)
-    # def calculate_lift(...):  # 제거됨
-    #     ...
-
     def filter_patterns(
         self,
         patterns: List[Dict],
@@ -89,7 +141,7 @@ class RecommendationEngine:
     ) -> List[Dict]:
         """
         1) 사소한 키워드(TRIVIAL_KEYWORDS) 제거
-        2) 자연어 질의에 이미 포함된 조건(나이/성별/지역/직업/소득 등) 제거
+        2) 자연어 질의에 이미 포함된 조건(나이/성별/지역/직업/소득/학력/결혼/자녀/가족/폰/차/흡연/음주/제품 등) 제거
         3) 나머지는 전부 남김 (lift/percentage 기준으로 걸러내지 않음)
         """
         filtered = []
@@ -98,7 +150,6 @@ class RecommendationEngine:
             feature = pattern.get('feature', '').lower()
             value = pattern.get('value', '')
             insight = pattern.get('insight', '')
-            # percentage는 이후 Top2 정렬에만 사용 (여기선 사용 X)
             percentage = pattern.get('percentage', 0)
 
             # 1) 사소한 키워드가 포함된 패턴은 제거
@@ -108,25 +159,82 @@ class RecommendationEngine:
             # 2) 검색 조건과 중복되는지 확인
             should_exclude = False
             
-            # 드릴다운 허용이 아닌 경우, 질의에 이미 포함된 그룹은 제외
+            # 드릴다운 허용이 아닌 경우에만 "질의에 이미 있는 그룹"을 제외
             if not self.is_drilldown_allowed(search_conditions, feature):
-                if any(w in feature for w in ['age', '나이', '연령']) and self.is_condition_applied(search_conditions, 'age', value):
+                # 나이
+                if any(w in feature for w in ['age', '나이', '연령']) and \
+                   self.is_condition_applied(search_conditions, 'age', value):
                     should_exclude = True
-                elif any(w in feature for w in ['gender', '성별']) and self.is_condition_applied(search_conditions, 'gender', value):
+
+                # 성별
+                elif any(w in feature for w in ['gender', '성별']) and \
+                     self.is_condition_applied(search_conditions, 'gender', value):
                     should_exclude = True
-                elif any(w in feature for w in ['location', '지역', '거주']) and self.is_condition_applied(search_conditions, 'location', value):
+
+                # 지역/거주
+                elif any(w in feature for w in ['location', '지역', '거주']) and \
+                     self.is_condition_applied(search_conditions, 'location', value):
                     should_exclude = True
-                elif any(w in feature for w in ['job', '직업']) and self.is_condition_applied(search_conditions, 'job', value):
+
+                # 직업
+                elif any(w in feature for w in ['job', '직업']) and \
+                     self.is_condition_applied(search_conditions, 'job', value):
                     should_exclude = True
-                elif any(w in feature for w in ['income', '소득']) and self.is_condition_applied(search_conditions, 'income', value):
+
+                # 소득
+                elif any(w in feature for w in ['income', '소득']) and \
+                     self.is_condition_applied(search_conditions, 'income', value):
+                    should_exclude = True
+
+                # 학력
+                elif any(w in feature for w in ['education', '학력', '학교', '대졸', '고졸']) and \
+                     self.is_condition_applied(search_conditions, 'education', value):
+                    should_exclude = True
+
+                # 결혼 여부
+                elif any(w in feature for w in ['marital', '결혼', '미혼', '기혼']) and \
+                     self.is_condition_applied(search_conditions, 'marital_status', value):
+                    should_exclude = True
+
+                # 자녀
+                elif any(w in feature for w in ['child', '자녀', '아이']) and \
+                     self.is_condition_applied(search_conditions, 'child', value):
+                    should_exclude = True
+
+                # 가족 구성
+                elif any(w in feature for w in ['family', '가족']) and \
+                     self.is_condition_applied(search_conditions, 'family', value):
+                    should_exclude = True
+
+                # 휴대폰
+                elif any(w in feature for w in ['phone', '휴대폰', '스마트폰', '모바일']) and \
+                     self.is_condition_applied(search_conditions, 'phone', value):
+                    should_exclude = True
+
+                # 차량
+                elif any(w in feature for w in ['car', '차량', '자동차']) and \
+                     self.is_condition_applied(search_conditions, 'car', value):
+                    should_exclude = True
+
+                # 흡연
+                elif any(w in feature for w in ['smoking', '흡연', '담배']) and \
+                     self.is_condition_applied(search_conditions, 'smoking', value):
+                    should_exclude = True
+
+                # 음주
+                elif any(w in feature for w in ['alcohol', '음주', '술']) and \
+                     self.is_condition_applied(search_conditions, 'alcohol', value):
+                    should_exclude = True
+
+                # 제품/전자제품
+                elif any(w in feature for w in ['product', '제품', '전자제품']) and \
+                     self.is_condition_applied(search_conditions, 'product', value):
                     should_exclude = True
 
             if should_exclude:
                 print(f"   ⚠️ 필터링(중복 조건): {feature} - {value}")
                 continue
 
-            # 🔹 더 이상 lift / percentage 기준 필터링은 하지 않고,
-            #     위 조건만 통과하면 모두 남김.
             filtered.append(pattern)
 
         return filtered

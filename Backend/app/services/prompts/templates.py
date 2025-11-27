@@ -258,8 +258,7 @@ class PromptTemplates:
     - 예: "아이폰 유저" -> phone_brand="아이폰"
     - 예: "지방" -> location="지방" (SQL에서 NOT IN 처리)
     - 예: "고소득" -> income_keyword="고소득" (SQL에서 700만원 이상 처리)
-3. "10대, 20대, 30대, 40대, 50대, 60대, 청년, 중장년, 노년"과 같은 단어가 질의에 포함되면, age_range는 절대 null로 두지 마세요.
-4. JSON 형식 엄수: 아래 형식을 필드를 빠뜨리지 말고 정확히 지키세요.
+3. JSON 형식 엄수: 아래 형식을 필드를 빠뜨리지 말고 정확히 지키세요.
 
 ## 필수 응답 형식 (JSON Schema)
 {{
@@ -283,7 +282,6 @@ class PromptTemplates:
 
 주의: 주석이나 설명 없이 오직 JSON 코드만 반환하세요."""
         return prompt
-
     
     # =====================================================
     # 3. SQL 쿼리 생성 (HAIKU)
@@ -377,7 +375,11 @@ class PromptTemplates:
 ## 중요 규칙
 1. panel_uuid 필수 포함
 2. SELECT 형식: 
-SELECT panel_id, panel_uuid, birth_year, gender, region_main, region_sub, job_category, job_detail, personal_income
+SELECT panel_id, panel_uuid, birth_year, gender, region_main, region_sub, 
+       job_category, job_detail, education, marital_status, child_num, family_num,
+       personal_income, household_income, 
+       car_brand, car_model, has_car,
+       owned_phone_brand, owned_phone_model, smoking_exp
 FROM {schema['table_name']} 
 WHERE ...
 3. 오직 SQL 문장만 출력 (설명 금지, JSON 금지, 마크다운 금지)
@@ -559,7 +561,7 @@ SQL:"""
       {{"th": "핵심 기능", "td": "설명"}}
     ]
   }},
-  "strategyProposal": ["1단계 (100자)", "2단계 (100자)", "3단계 (100자)"],
+  "strategyProposal": ["초기 런칭 전략 (100자)", "성장 확대 전략 (100자)", "장기 안정화 전략 (100자)"],
   "effectTable": {{
     "headers": ["구분", "정량적 효과", "정성적 효과"],
     "rows": [

@@ -26,11 +26,15 @@ class OpusService(ClaudeBase):
             pre_analysis = None
             if use_parser:
                 parsed_data = self.query_parser.full_parse_and_augment(user_query)
+                
+                target_count = self.query_parser.extract_target_count(user_query)
+
                 pre_analysis = {
                     "parsed_conditions": parsed_data['search_conditions'],
                     "suggestions": parsed_data['suggestions'],
                     "keywords": parsed_data['keywords'],
-                    "complexity": parsed_data['complexity']
+                    "complexity": parsed_data['complexity'],
+                    "target_count": target_count
                 }
                 print(f"Pre-analysis: {json.dumps(pre_analysis, ensure_ascii=False, indent=2)}")
             
@@ -51,6 +55,10 @@ class OpusService(ClaudeBase):
             parsed_result = self.parse_json_response(response_text)
             
             if parsed_result:
+
+                if pre_analysis and pre_analysis.get('target_count'):
+                    parsed_result['target_count'] = pre_analysis['target_count']
+                
                 return {
                     "success": True,
                     "data": parsed_result,

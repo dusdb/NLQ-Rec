@@ -150,6 +150,13 @@ function App() {
     const [isAllPanelsViewVisible, setIsAllPanelsViewVisible] = useState(false);
     const [isAllPanelsExiting, setIsAllPanelsExiting] = useState(false);
 
+    // 🆕 프로그레스 바 상태
+    const [progressData, setProgressData] = useState({
+        step: 0,
+        progress: 0,
+        message: ''
+    });
+
     const clearResults = () => {
         setIsSearched(false);
         setFilterTags([]);
@@ -167,57 +174,72 @@ function App() {
         }
         setIsLoading(true);
         setIsSearched(true); 
+        setProgressData({ step: 0, progress: 0, message: '검색 시작...' });
         console.log(`[프론트] 백엔드로 전송할 쿼리: "${queryToSearch}"`);
 
-        try {
-            const response = await axios.post(`${API_BASE_URL}/api/v1/search`, {
-                query: queryToSearch 
-            });
+        const eventSource = new EventSource(
+            `${API_BASE_URL}/api/v1/search-stream?query=${encodeURIComponent(queryToSearch)}`
+        );
 
-            const apiResponse = response.data;
-
-            console.log('🔍 백엔드 전체 응답:', JSON.stringify(apiResponse, null, 2));
-            console.log('🔍 samplePanels 첫번째:', apiResponse.samplePanels[0]);
+        eventSource.onmessage = (event) => {
+            const data = JSON.parse(event.data);
             
-            // ✅ 즉시 갱신 (React 배치 업데이트 방지)
-            setTotalCount(apiResponse.totalCount);
-            setFilterTags(apiResponse.filterTags || []);
-            setSamplePanels(apiResponse.samplePanels);
-            setCurrentFullPanelList(apiResponse.currentFullPanelList);
-            setRecommendations(apiResponse.recommendations);
-            setStrategyCards(apiResponse.strategyCards || []);
+            console.log('📡 SSE 이벤트:', data);
             
-            // 강제 리렌더링 트리거
-            setTimeout(() => {
-                console.log('✅ 통계 갱신 완료:', apiResponse.totalCount);
-            }, 0);
-
-            // ✅ 자동 로딩: preloadHint가 있으면 백그라운드 생성
-            const preloadStrategy = (apiResponse.strategyCards || []).find(s => s.preloadHint);
-            if (preloadStrategy) {
-                console.log('🔄 전략 사전 생성 시작...');
-                axios.post(`${API_BASE_URL}/api/v1/generate-report`, {
-                    strategyId: preloadStrategy.id,
-                    strategyName: preloadStrategy.strategyName,
-                    coreTarget: preloadStrategy.coreTarget,
-                    originalQuery: queryToSearch
-                }).then(() => {
-                    console.log('✅ 전략 사전 생성 완료 (캐싱됨)');
-                }).catch(err => {
-                    console.log('⚠️ 사전 생성 실패 (무시):', err.message);
-                });
+            if (data.error) {
+                console.error('❌ Error:', data.error);
+                alert(`검색 오류: ${data.error}`);
+                eventSource.close();
+                setIsLoading(false);
+                clearResults();
+                return;
             }
 
-            } catch (error) {
-            console.error("API 호출 중 오류 발생:", error);
-            clearResults();
-        
-        } finally {
+            // 진행 상황 업데이트
+            setProgressData({
+                step: data.step,
+                progress: data.progress,
+                message: data.message
+            });
+
+            // 완료 시 (Step 9)
+            if (data.step === 9 && data.result) {
+                console.log('✅ 검색 완료:', data.result);
+                
+                const apiResponse = data.result;
+                
+                // 🔍 디버깅: 패널 데이터 확인
+                console.log('📊 samplePanels 개수:', apiResponse.samplePanels?.length);
+                console.log('📊 currentFullPanelList 개수:', apiResponse.currentFullPanelList?.length);
+                console.log('📊 첫 번째 패널 grouped_details:', apiResponse.currentFullPanelList?.[0]?.grouped_details ? '있음' : '없음');
+                
+                // 💾 디버깅용: window 객체에 저장
+                window.currentFullPanelList = apiResponse.currentFullPanelList;
+                window.firstPanel = apiResponse.currentFullPanelList?.[0];
+                console.log('💾 window.firstPanel 저장 완료 (Console에서 확인 가능)');
+                
+                setTotalCount(apiResponse.totalCount);
+                setFilterTags(apiResponse.filterTags || []);
+                setSamplePanels(apiResponse.samplePanels);
+                setCurrentFullPanelList(apiResponse.currentFullPanelList);
+                setRecommendations(apiResponse.recommendations);
+                setStrategyCards(apiResponse.strategyCards || []);
+                
+                eventSource.close();
+                setIsLoading(false);
+            }
+        };
+
+        eventSource.onerror = (error) => {
+            console.error('❌ SSE Error:', error);
+            eventSource.close();
             setIsLoading(false);
-        }
+            alert('검색 중 오류가 발생했습니다. 다시 시도해주세요.');
+            clearResults();
+        };
     };
     
-    const handleRecommendationClick = (rec) => {
+    const handleRecommendationClick = async (rec) => {
         const actionData = rec.action.data;
         const partToAdd = actionData.queryPart || actionData.value;
         
@@ -244,13 +266,49 @@ function App() {
             return;
         }
         
-        // 쿼리 추가
-        const newQuery = query.trim() 
-            ? `${query.trim()}, ${partToAdd}` 
-            : partToAdd;
+        // 🆕 기존 결과에서 필터링 (재검색 없음)
+        console.log(`🔍 기존 결과에서 필터링: "${partToAdd}"`);
+        setIsLoading(true);
+        setProgressData({ step: 0, progress: 0, message: '' }); // ✅ 프로그레스 데이터 초기화
         
-        setQuery(newQuery);
-        handleSearch(newQuery);
+        try {
+            const response = await axios.post(`${API_BASE_URL}/api/v1/refine-insights`, {
+                panelUuids: currentFullPanelList.map(p => p.panel_uuid),
+                additionalCondition: partToAdd,
+                originalQuery: query
+            });
+            
+            const apiResponse = response.data;
+            
+            console.log('✅ 필터링 완료:', apiResponse.control);
+            
+            // 쿼리 업데이트
+            const newQuery = query.trim() ? `${query.trim()}, ${partToAdd}` : partToAdd;
+            setQuery(newQuery);
+            
+            // 결과 갱신 (필터링된 결과로)
+            setTotalCount(apiResponse.totalCount);
+            setCurrentFullPanelList(apiResponse.filteredPanels);
+            setSamplePanels(apiResponse.samplePanels);
+            setRecommendations(apiResponse.recommendations);
+            
+            // 필터 태그 추가
+            setFilterTags(prev => [
+                ...prev,
+                {
+                    id: `tag-${Date.now()}`,
+                    label: "추가 조건",
+                    value: partToAdd,
+                    queryPart: partToAdd
+                }
+            ]);
+            
+        } catch (error) {
+            console.error("필터링 실패:", error);
+            alert("조건 추가 실패. 다시 시도해주세요.");
+        } finally {
+            setIsLoading(false);
+        }
     };
     
     const handleTagRemove = (tagToRemove) => {
@@ -348,7 +406,22 @@ function App() {
                     </div>
                 </section>
 
-                {isLoading && <Loader />}
+                {isLoading && progressData.message && (
+                    <SearchProgressBar 
+                        currentStep={progressData.step}
+                        percentage={progressData.progress}
+                        message={progressData.message}
+                    />
+                )}
+
+                {isLoading && !progressData.message && (
+                    <div className="search-progress-overlay">
+                        <div className="progress-card">
+                            <h3 className="progress-title">조건 추가 중</h3>
+                            <div className="progress-spinner"></div>
+                        </div>
+                    </div>
+                )}
 
                 {isSearched && !isLoading && totalCount > 0 && (
                     <div id="results-wrapper" className="visible">
@@ -403,9 +476,9 @@ function App() {
                                 총 <strong>{totalCount}</strong>명 검색됨
                             </p>
                             <div id="panel-spotlight-container">
-                                {samplePanels.map((panel) => (
+                                {samplePanels.map((panel, index) => (
                                     <PanelCard
-                                        key={panel.id}
+                                        key={`sample-${panel.panel_uuid || panel.id || index}`}
                                         panel={panel}
                                         onDetailClick={openPanelModal}
                                     />
@@ -449,12 +522,12 @@ function AllPanelsView({ fullPanelList, totalCount, onBack, isExiting }) {
             <div className="all-panels-content">
                 <div id="all-panels-list" className="panel-list-column">
                     {fullPanelList.length > 0 ? (
-                        fullPanelList.map(panel => (<PanelCard key={panel.id} panel={panel} onDetailClick={setSelectedPanel} />))
+                        fullPanelList.map((panel, index) => (<PanelCard key={`all-${panel.panel_uuid || panel.id || index}`} panel={panel} onDetailClick={setSelectedPanel} />))
                     ) : ( <p>표시할 패널이 없습니다.</p> )}
                 </div>
                 <div id="all-panels-detail" className="panel-detail-column">
                     <PanelDetail 
-                        key={selectedPanel ? selectedPanel.id : 'placeholder'} 
+                        key={selectedPanel ? `detail-${selectedPanel.panel_uuid || selectedPanel.id}` : 'placeholder'} 
                         panel={selectedPanel} 
                     />
                 </div>
@@ -530,24 +603,33 @@ function StrategyDetailModal({ isOpen, onClose, strategy, query }) {
     
     useEffect(() => {
         if (isOpen && strategy) {
-            setReportData(null);
-            setIsLoading(true);
-            
-            axios.post(`${API_BASE_URL}/api/v1/generate-report`, {
-                strategyId: strategy.id,
-                strategyName: strategy.strategyName,
-                coreTarget: strategy.coreTarget,
-                originalQuery: query
-            })
-            .then(response => {
-                setReportData(response.data.report);
-            })
-            .catch(error => {
-                console.error("리포트 로딩 실패:", error);
-            })
-            .finally(() => {
+            // ✅ 이미 리포트가 있으면 즉시 사용
+            if (strategy.report) {
+                console.log('✅ 사전 생성된 리포트 사용 (즉시 표시)');
+                setReportData(strategy.report);
                 setIsLoading(false);
-            });
+            } else {
+                // ⚠️ 리포트가 없으면 생성 (폴백)
+                console.log('⚠️ 리포트 없음 - API 호출');
+                setReportData(null);
+                setIsLoading(true);
+                
+                axios.post(`${API_BASE_URL}/api/v1/generate-report`, {
+                    strategyId: strategy.id,
+                    strategyName: strategy.strategyName,
+                    coreTarget: strategy.coreTarget,
+                    originalQuery: query
+                })
+                .then(response => {
+                    setReportData(response.data.report);
+                })
+                .catch(error => {
+                    console.error("리포트 로딩 실패:", error);
+                })
+                .finally(() => {
+                    setIsLoading(false);
+                });
+            }
         }
     }, [isOpen, strategy, query]);
 
@@ -732,9 +814,9 @@ function PanelCard({ panel, onDetailClick }) {
             </h4>
             <ul>
                 <li><strong>나이:</strong> {2025 - (panel.birth_year || 2000)}세</li>
-                <li><strong>성별:</strong> {panel.gender || '정보 없음'}</li>
-                <li><strong>지역:</strong> {panel.region_main} {panel.region_sub}</li>
-                <li><strong>직업:</strong> {panel.job_category || '정보 없음'}</li>
+                <li><strong>성별:</strong> {panel.gender || '미기재'}</li>
+                <li><strong>지역:</strong> {panel.region_main ? `${panel.region_main} ${panel.region_sub || ''}` : '미기재'}</li>
+                <li><strong>직업:</strong> {panel.job_category || '미기재'}</li>
             </ul>
         </div>
     );
@@ -746,7 +828,17 @@ const PanelDetail = ({ panel, onClose }) => {
 
   React.useEffect(() => {
     const fetchDetail = async () => {
+      // ✅ panel에 이미 grouped_details가 있으면 즉시 사용
+      if (panel?.grouped_details) {
+        console.log('✅ 패널 상세 정보 즉시 표시 (이미 포함됨)');
+        setDetailData(panel);
+        setLoading(false);
+        return;
+      }
+
+      // ⚠️ grouped_details가 없으면 API 호출
       try {
+        console.log('⚠️ 상세 정보 없음 - API 호출');
         setLoading(true);
         const response = await fetch(`http://localhost:8000/api/v1/panel/${panel.panel_uuid}`);
         const result = await response.json();
@@ -769,64 +861,108 @@ const PanelDetail = ({ panel, onClose }) => {
   if (!panel) return null;
 
   return (
-    <div className="panel-detail-overlay" onClick={onClose}>
-      <div className="panel-detail-modal" onClick={(e) => e.stopPropagation()}>
-        <button className="close-button" onClick={onClose}>×</button>
+    <div className="detail-header">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '10px' }}>
         
-        <div className="detail-header">
-          <h2>{panel.panel_id || panel.panel_uuid}</h2>
-          <p className="detail-subtitle">
+        <div className="profile-avatar">P</div>
+        
+        <div className="header-info">
+           {/* 이름 옆/아래 여백 제거를 위해 margin 조절 */}
+          <h2 style={{ margin: '0 0 5px 0' }}>{panel.panel_id || panel.panel_uuid}</h2>
+          <p className="detail-subtitle" style={{ margin: 0 }}>
             {panel.gender || '성별 미상'}, {2025 - (panel.birth_year || 2000)}세
-          </p>
-          <p className="detail-location">
-            {panel.region_main} {panel.region_sub}
-          </p>
-          <p className="detail-job">
-            {panel.job_category || '직업 정보 없음'}
           </p>
         </div>
 
-        {loading ? (
-          <div className="loading-spinner">로딩 중...</div>
-        ) : (
-          <div className="detail-content">
-            <div className="detail-section">
-              <h3>자기소개</h3>
-              <p className="bio-text">
-                {detailData?.bio || '정보 없음'}
-              </p>
-            </div>
-
-            <div className="detail-section">
-              <h3>상세 정보</h3>
-              
-              {detailData?.grouped_details && Object.keys(detailData.grouped_details).length > 0 ? (
-                Object.entries(detailData.grouped_details).map(([category, items]) => (
-                  <div key={category} className="info-category">
-                    <h4>{category}</h4>
-                    <div className="info-grid">
-                      {items.map((item, index) => (
-                        <div key={index} className="info-row">
-                          <span className="info-label">{item.label}:</span>
-                          <span className="info-value">{item.value}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <p>상세 정보가 없습니다.</p>
-              )}
-            </div>
-          </div>
-        )}
       </div>
+      
+      {/* 나머지 정보는 아래에 배치 */}
+      <br></br>
+      <p className="detail-location" style={{ marginTop: '10px' }}>
+        거주지: {panel.region_main ? `${panel.region_main} ${panel.region_sub || ''}` : '거주지 정보 없음'}
+      </p>
+      <p className="detail-job">
+        직업: {panel.job_category || '직업 정보 없음'}
+      </p>
+      <br></br>
+
+    {loading ? (
+      <div className="loading-spinner">로딩 중...</div>
+    ) : (
+      <div className="detail-content">
+        <div className="detail-section">
+          <h3>상세 정보</h3>
+          
+          {detailData?.grouped_details && Object.keys(detailData.grouped_details).length > 0 ? (
+            Object.entries(detailData.grouped_details).map(([category, items]) => (
+              <div key={category} className="info-category">
+                <h4>{category}</h4>
+                <div className="info-grid">
+                  {items.map((item, index) => (
+                    <div key={index} className="info-row">
+                      <span className="info-label">{item.label}: </span>
+                      <span className="info-value">{item.value}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))
+          ) : (
+            <p>상세 정보가 없습니다.</p>
+          )}
+        </div>
+      </div>
+    )}
     </div>
   );
+  
 };
 
+function SearchProgressBar({ currentStep, percentage, message }) {
+    // 단계별 제목
+    const getTitle = () => {
+        if (percentage >= 100) return '완료!';
+        if (percentage >= 70) return 'AI 전략 작성 중';
+        if (percentage >= 50) return 'AI 패턴 분석 중';
+        if (percentage >= 40) return '패널 분석 중';
+        return '패널 검색 중';
+    };
+
+    return (
+        <div className="search-progress-overlay">
+            <div className="progress-card">
+                <h3 className="progress-title">{getTitle()}</h3>
+                
+                {/* 스피너 */}
+                <div className="progress-spinner"></div>
+                
+                <p className="progress-step-text">{message}</p>
+                
+                <div className="progress-bar-track">
+                    <div 
+                        className="progress-bar-fill" 
+                        style={{ width: `${percentage}%` }}
+                    />
+                </div>
+                
+                <div className="progress-percentage">{percentage}%</div>
+            </div>
+        </div>
+    );
+}
+
 function Loader() {
-    return <div id="loader" style={{ display: 'block' }}></div>;
+    return (
+        <div style={{
+            margin: '0 auto',
+            border: '5px solid #f3f3f3',
+            borderTop: '5px solid #14213D',
+            borderRadius: '50%',
+            width: '40px',
+            height: '40px',
+            animation: 'spin 1s linear infinite'
+        }} />
+    );
 }
 
 export default App;

@@ -66,6 +66,17 @@ class HaikuService(ClaudeBase):
             if not sql_query or not sql_query.upper().strip().startswith('SELECT'):
                 raise ValueError("유효하지 않은 SQL 쿼리")
             
+            if 'ORDER BY' not in sql_query.upper():
+                if 'LIMIT' in sql_query.upper():
+                    # LIMIT 앞에 ORDER BY RANDOM() 삽입
+                    sql_query = sql_query.replace('LIMIT', 'ORDER BY RANDOM() LIMIT')
+                    sql_query = sql_query.replace('limit', 'ORDER BY RANDOM() LIMIT')
+                else:
+                    # LIMIT이 없으면 끝에 추가
+                    sql_query = sql_query.rstrip(';') + ' ORDER BY RANDOM()'
+            
+            print(f"Randomized SQL:\n{sql_query}\n")
+            
             return {
                 "success": True,
                 "sql_query": sql_query,
