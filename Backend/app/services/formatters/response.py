@@ -168,7 +168,7 @@ def convert_panel_to_frontend_format(panel: Dict[str, Any]) -> Dict[str, Any]:
     result = {
         "id": panel.get('panel_id', 'P-Unknown'),
         "panel_id": panel.get('panel_id'),
-        "panel_uuid": panel.get('panel_uuid'),
+        "panel_uuid": str(panel.get('panel_uuid')) if panel.get('panel_uuid') else None,
         "birth_year": panel.get('birth_year'),
         "gender": panel.get('gender'),
         "region_main": panel.get('region_main'),
