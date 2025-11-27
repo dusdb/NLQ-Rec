@@ -1138,3 +1138,72 @@ body {
     border-radius: 50%;
     animation: spin 1s linear infinite;
 }
+/* ================================================
+   상세 정보 섹션별 스타일 - 최적화된 디자인
+   ================================================ */
+
+/* 전체 상세 정보 컨테이너 */
+.detail-content {
+    padding: 1.5rem 0;
+}
+
+.detail-section h3 {
+    font-size: 1.4rem;
+    color: var(--primary-color);
+    margin-bottom: 2rem;
+    font-weight: 700;
+}
+
+/* 각 카테고리 섹션 */
+.info-category {
+    margin-bottom: 2rem;
+}
+
+.info-category:last-child {
+    margin-bottom: 0;
+}
+
+/* 카테고리 제목 */
+.info-category h4 {
+    font-size: 0.85rem;
+    color: var(--subtle-text-color);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin: 0 0 0.75rem 0;
+    font-weight: 600;
+}
+
+/* 정보 그리드 */
+.info-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+/* 각 정보 행 */
+.info-row {
+    display: flex;
+    align-items: center;
+    padding: 0.65rem 0;
+    border-bottom: 1px solid #F0F0F0;
+}
+
+.info-row:last-child {
+    border-bottom: none;
+}
+
+/* 라벨 스타일 */
+.info-label {
+    color: var(--subtle-text-color);
+    font-size: 0.9rem;
+    min-width: 100px;
+    flex-shrink: 0;
+}
+
+/* 값 스타일 */
+.info-value {
+    color: var(--text-color);
+    font-size: 0.95rem;
+    font-weight: 500;
+    flex: 1;
+}
