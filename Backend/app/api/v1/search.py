@@ -1562,9 +1562,21 @@ async def filter_panels_by_uuids_and_conditions(
             params.append(f"%{location}%")
 
     # 5. 상세 지역
-    if conditions.get("district"):
-        where_clauses.append(f"region_sub LIKE ${len(params) + 1}")
-        params.append(f"%{conditions['district']}%")
+    district = conditions.get("district")
+    if district:
+        # 강남구,서초구,송파구 → ["강남구", "서초구", "송파구"]
+        districts = [d.strip() for d in re.split(r'[,/·+ ]', district) if d.strip()]
+
+        if len(districts) == 1:
+            where_clauses.append(f"region_sub LIKE ${len(params) + 1}")
+            params.append(f"%{districts[0]}%")
+        else:
+            # 여러 구/군이면 OR 조건 생성
+            or_parts = []
+            for d in districts:
+                or_parts.append(f"region_sub LIKE ${len(params) + 1}")
+                params.append(f"%{d}%")
+            where_clauses.append("(" + " OR ".join(or_parts) + ")")
 
     # 6. 직업
     job_value = conditions.get("job")
