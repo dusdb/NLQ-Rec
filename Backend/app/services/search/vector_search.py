@@ -141,22 +141,13 @@ class VectorSearchService:
         기존: SQL 필터링 -> Python List(UUID) -> SQL IN절 (메모리 비효율)
         변경: INNER JOIN panel_master -> 단일 쿼리로 필터링 및 검색 수행
         """
-        # 1. 조건이 없으면 일반 시맨틱 검색 수행 후 정보 결합
-        if not sql_conditions:
-            results = self.semantic_search(query_text, top_k)
-            if results:
-                panel_uuids = list(set([r['panel_uuid'] for r in results]))
-                panel_info = self.get_panel_info_by_uuids(panel_uuids)
-                panel_map = {p['panel_uuid']: p for p in panel_info}
-                
-                combined = []
-                for r in results:
-                    uid = r['panel_uuid']
-                    if uid in panel_map:
-                        combined.append({**r, **panel_map[uid]})
-                return combined
+        # 🆕 유효한 조건이 하나도 없으면 빈 결과 반환
+        has_valid_condition = sql_conditions and any(v for v in sql_conditions.values() if v is not None)
+        
+        if not has_valid_condition:
+            logger.warning("⚠ hybrid_search: 유효한 검색 조건 없음 → 빈 결과 반환")
             return []
-
+        
         # 2. 하이브리드 검색 (JOIN 방식)
         query_vector = self.get_embedding(query_text)
         vector_str = "[" + ",".join(map(str, query_vector)) + "]"

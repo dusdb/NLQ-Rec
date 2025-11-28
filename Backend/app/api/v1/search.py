@@ -155,14 +155,7 @@ async def search_panels_stream(query: str, search_mode: str = "hybrid", top_k: O
             else:
                 raise ValueError(f"유효하지 않은 search_mode: {actual_mode}")
 
-            # Fallback (hybrid 검색으로 완화)
-            if not filtered_panels and actual_mode in ["rdb", "hybrid"]:
-                print("⚠ [SSE] RDB/하이브리드 결과 없음 → 조건 유지한 채 하이브리드 fallback 검색 실행")
-                filtered_panels = search_agent.hybrid_search(
-                    query_text=query,
-                    sql_conditions=search_conditions,
-                    top_k=target_count,
-                )
+            # Fallback 제거 - 결과 없으면 그대로 0명 처리
 
             # -----------------------
             # Step 4: 데이터 변환
@@ -264,8 +257,99 @@ async def search_panels_stream(query: str, search_mode: str = "hybrid", top_k: O
 
             insights = insight_result.get("data", {})
 
+            # 🆕 검색 결과 0명이면 여기서 즉시 종료
+            if not converted_panels:
+                print("⚠ 검색 결과 0명 → Step 7, 8 건너뛰고 즉시 완료")
+                
+                # filterTags 생성 (Step 9에서 가져옴)
+                filter_tags: List[Dict[str, Any]] = []
+                
+                age_range = search_conditions.get("age_range")
+                if age_range and age_range.get("min"):
+                    decade = (age_range["min"] // 10) * 10
+                    filter_tags.append({
+                        "label": "나이",
+                        "value": f"{age_range.get('min')}-{age_range.get('max', age_range['min'])}세",
+                        "queryPart": f"{decade}대",
+                    })
+
+                for key, label in [
+                    ("gender", "성별"),
+                    ("location", "지역"),
+                    ("district", "상세지역"),
+                    ("job", "직업"),
+                    ("education", "학력"),
+                    ("income_level", "소득"),
+                    ("marital_status", "결혼상태"),
+                    ("car_brand", "차량"),
+                    ("phone_brand", "휴대폰"),
+                    ("smoking", "흡연"),
+                    ("alcohol", "음주"),
+                    ("product", "전자제품"),
+                    ("child", "자녀"),
+                    ("family", "가족구성"),
+                ]:
+                    if search_conditions.get(key):
+                        filter_tags.append({
+                            "label": label,
+                            "value": search_conditions[key],
+                            "queryPart": search_conditions[key],
+                        })
+                
+                # 조건 완화 추천만 생성
+                recommendations = []
+                if search_conditions.get("location") == "지방":
+                    recommendations.append({
+                        "id": "rec-location-busan",
+                        "text": "지방 전체가 아닌 특정 지역(예: 부산, 대구)을 지정해보세요.",
+                        "action": {
+                            "buttonText": "지역 구체화하기",
+                            "data": {"type": "suggestion", "value": "부산", "queryPart": "부산"},
+                        },
+                    })
+                if search_conditions.get("income_keyword"):
+                    recommendations.append({
+                        "id": "rec-income-remove",
+                        "text": "소득 조건이 너무 엄격할 수 있습니다. 조건을 완화해보세요.",
+                        "action": {
+                            "buttonText": "소득 조건 제거",
+                            "data": {"type": "suggestion", "value": "소득 무관", "queryPart": ""},
+                        },
+                    })
+                if not recommendations:
+                    recommendations.append({
+                        "id": "rec-general",
+                        "text": f"'{query}' 조건이 너무 구체적입니다. 조건을 완화해보세요.",
+                        "action": {
+                            "buttonText": "조건 완화하기",
+                            "data": {"type": "suggestion", "value": "조건 완화", "queryPart": ""},
+                        },
+                    })
+                
+                total_time = round(time.time() - start_time, 2)
+                
+                result_data = {
+                    "totalCount": 0,
+                    "filterTags": filter_tags,
+                    "samplePanels": [],
+                    "currentFullPanelList": [],
+                    "recommendations": recommendations,
+                    "strategyCards": [],
+                    "control": {
+                        "status": "no_results",
+                        "searchQuery": query,
+                        "searchMode": search_mode,
+                        "actualMode": actual_mode,
+                        "total_response_time_seconds": total_time,
+                    },
+                }
+                
+                clean_data = jsonable_encoder(result_data)
+                yield emit_progress(6, 65, "검색 완료 - 결과 없음", {"result": clean_data})
+                return  # ✅ 여기서 종료
+
             # -----------------------
-            # Step 7: 기존 추천 엔진 기반 추천
+            # Step 7: 기존 추천 엔진 기반 추천 (패널 있을 때만 실행)
             # -----------------------
             yield emit_progress(7, 80, "추가로 좁힐 만한 조건을 추천하고 있어요...")
 
@@ -602,28 +686,12 @@ async def search_panels(request: SearchRequest):
         else:
             raise ValueError(f"Invalid search_mode: {actual_mode}")
 
-        is_fallback = False
-        if not filtered_panels and actual_mode in ["rdb", "hybrid"]:
-            print(
-                "⚠ 정확한 매칭 결과 없음. 유사도 기반 검색(Vector + 조건 필터)로 전환합니다..."
-            )
-            filtered_panels = search_agent.hybrid_search(
-                query_text=request.query,
-                sql_conditions=search_conditions,
-                top_k=target_count,
-            )
-            is_fallback = True
-
-            search_metadata = {
-                "search_type": "fallback_hybrid",
-                "original_mode": actual_mode,
-                "message": "조건에 완벽히 부합하는 대상이 없어, 가장 유사한 대상을 (조건을 유지한 채) 찾았습니다.",
-            }
+        # Fallback 제거 - 결과 없으면 그대로 0명 처리
 
         step3_time = round(time.time() - step3_start, 3)
         time_logs["step3_search_exec"] = step3_time
         print(
-            f"✅ Step 3 완료: {len(filtered_panels)}명 검색됨 (Fallback: {is_fallback}) / {step3_time}초"
+            f"✅ Step 3 완료: {len(filtered_panels)}명 검색됨 / {step3_time}초"
         )
 
         # -----------------------
@@ -1498,7 +1566,6 @@ async def filter_panels_by_uuids_and_conditions(
         where_clauses.append(f"region_sub LIKE ${len(params) + 1}")
         params.append(f"%{conditions['district']}%")
 
-    # 6. 직업
     # 6. 직업
     job_value = conditions.get("job")
     if job_value:

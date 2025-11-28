@@ -128,6 +128,43 @@ async function handleDownloadDocx(report) {
     });
 }
 
+// 🆕 검색 결과 없음 컴포넌트
+function NoResultsMessage({ query, recommendations, onRecommendationClick }) {
+    return (
+        <div className="no-results-container">
+            <div className="no-results-icon">🔍</div>
+            <h2>검색 결과가 없습니다</h2>
+            <p className="no-results-query">
+                "<strong>{query}</strong>" 조건과 일치하는 패널을 찾지 못했습니다.
+            </p>
+            
+            {recommendations.length > 0 && (
+                <div className="no-results-suggestions">
+                    <h3>💡 이렇게 시도해보세요</h3>
+                    <div className="recommendations-container">
+                        {recommendations.map((rec) => (
+                            <RecommendationCard
+                                key={rec.id}
+                                rec={rec}
+                                onClick={onRecommendationClick}
+                            />
+                        ))}
+                    </div>
+                </div>
+            )}
+            
+            <div className="no-results-tips">
+                <p><strong>검색 팁:</strong></p>
+                <ul>
+                    <li>조건을 하나씩 제거해보세요</li>
+                    <li>특정 지역 대신 넓은 지역으로 검색해보세요</li>
+                    <li>소득/차량 등의 선택적 조건을 제거해보세요</li>
+                </ul>
+            </div>
+        </div>
+    );
+}
+
 // React 컴포넌트 정의
 function App() {
     // 🆕 랜덤 placeholder 예시
@@ -138,7 +175,7 @@ function App() {
     ];
     
     const [query, setQuery] = useState('');
-    const [placeholder, setPlaceholder] = useState(''); // 🆕 추가
+    const [placeholder, setPlaceholder] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [isSearched, setIsSearched] = useState(false);
     
@@ -169,7 +206,7 @@ function App() {
     useEffect(() => {
         const randomIndex = Math.floor(Math.random() * placeholderExamples.length);
         setPlaceholder(placeholderExamples[randomIndex]);
-    }, []); // 빈 배열 = 최초 1회만 실행
+    }, []);
 
     const clearResults = () => {
         setIsSearched(false);
@@ -289,7 +326,7 @@ function App() {
         // 🆕 기존 결과에서 필터링 (재검색 없음)
         console.log(`🔍 기존 결과에서 필터링: "${partToAdd}"`);
         setIsLoading(true);
-        setProgressData({ step: 0, progress: 0, message: '' }); // ✅ 프로그레스 데이터 초기화
+        setProgressData({ step: 0, progress: 0, message: '' });
         
         try {
             const response = await axios.post(`${API_BASE_URL}/api/v1/refine-insights`, {
@@ -443,6 +480,16 @@ function App() {
                     </div>
                 )}
 
+                {/* 🆕 검색 결과 0명 처리 */}
+                {isSearched && !isLoading && totalCount === 0 && (
+                    <NoResultsMessage 
+                        query={query}
+                        recommendations={recommendations}
+                        onRecommendationClick={handleRecommendationClick}
+                    />
+                )}
+
+                {/* 기존 검색 결과 화면 (totalCount > 0일 때만) */}
                 {isSearched && !isLoading && totalCount > 0 && (
                     <div id="results-wrapper" className="visible">
                         {(recommendations.length > 0 || strategyCards.length > 0) && (
